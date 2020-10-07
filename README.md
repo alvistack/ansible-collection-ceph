@@ -107,6 +107,9 @@ Once update now run the playbooks:
 
 You could also run our [Molecule](https://molecule.readthedocs.io/en/stable/) test cases if you have [Vagrant](https://www.vagrantup.com/) and [Libvirt](https://libvirt.org/) installed, e.g.
 
+    # Bootstrap Vagrant
+    ./scripts/bootstrap-vagrant.sh
+    
     # Run Molecule on Ubuntu 20.04 with Vagrant and Libvirt
     molecule converge -s ubuntu-20.04
 
