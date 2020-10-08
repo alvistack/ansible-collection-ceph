@@ -29,9 +29,6 @@ platforms:
       - ceph_osd
       - ceph_mds
       - ceph_rgw
-      - etcd
-      - kube_master
-      - kube_node
 lint: |
   set -ex
   yamllint .
