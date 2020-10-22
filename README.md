@@ -31,7 +31,7 @@ Our default Ceph 15.2 is not supported by Fedora 32 (only Ceph 14.2), with solut
 
 ### Bootstrap Ansible and Roles
 
-Start by cloning the Alvistack-Ansible repository, checkout the corresponding branch, and init with `git submodule`, then bootstrap Python3 + Ansible with provided helper script:
+Start by cloning the repository, checkout the corresponding branch, and init with `git submodule`, then bootstrap Python3 + Ansible with provided helper script:
 
     # GIT clone the development branch
     git clone --branch develop https://github.com/alvistack/ansible-collection-ceph
@@ -107,10 +107,10 @@ Once update now run the playbooks:
 
 You could also run our [Molecule](https://molecule.readthedocs.io/en/stable/) test cases if you have [Vagrant](https://www.vagrantup.com/) and [Libvirt](https://libvirt.org/) installed, e.g.
 
-    # Bootstrap Vagrant
+    # Bootstrap Vagrant and Libvirt
     ./scripts/bootstrap-vagrant.sh
     
-    # Run Molecule on Ubuntu 20.04 with Vagrant and Libvirt
+    # Run Molecule on Ubuntu 20.04
     molecule converge -s ubuntu-20.04
 
 Please refer to [.travis.yml](.travis.yml) for more information on running Molecule.
