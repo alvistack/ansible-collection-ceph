@@ -19,13 +19,7 @@ This collection was designed for:
   - RHEL/CentOS 7/8
   - openSUSE Leap 15.2
   - Debian 10
-  - Fedora 32
-
-### Fedora 32
-
-Our default Ceph 15.2 is not supported by Fedora 32 (only Ceph 14.2), with solution:
-
-  - Switch our variable as `ceph_release: "14.2"` for deployment (see [inventory/default/group\_vars/all/00-defaults.yml](inventory/default/group_vars/all/00-defaults.yml))
+  - Fedora 33
 
 ## Quick Start
 
