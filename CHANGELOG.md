@@ -7,6 +7,7 @@
   - Support Fedora 33
   - Remove Fedora 32 support
   - Support Ubuntu 20.10
+  - Bugfix graceful shutdown deadlock due to systemd dependencies
 
 ## 4.5.0 - 2020-10-07
 
