@@ -1,6 +1,6 @@
 # Ansible Collection for Ceph
 
-[![Travis](https://img.shields.io/travis/com/alvistack/ansible-collection-ceph.svg)](https://travis-ci.com/alvistack/ansible-collection-ceph)
+[![Gitlab pipeline status](https://img.shields.io/gitlab/pipeline/alvistack/ansible-collection-ceph/master)](https://gitlab.com/alvistack/ansible-collection-ceph/-/pipelines)
 [![GitHub release](https://img.shields.io/github/release/alvistack/ansible-collection-ceph.svg)](https://github.com/alvistack/ansible-collection-ceph/releases)
 [![GitHub license](https://img.shields.io/github/license/alvistack/ansible-collection-ceph.svg)](https://github.com/alvistack/ansible-collection-ceph/blob/master/LICENSE)
 [![Ansible Collection](https://img.shields.io/badge/galaxy-alvistack.ceph-blue.svg)](https://galaxy.ansible.com/alvistack/ceph)
