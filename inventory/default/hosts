@@ -1,33 +1,20 @@
 [all]
-ansible ansible_host=192.168.0.11
-ceph11  ansible_host=192.168.0.21
-ceph12  ansible_host=192.168.0.22
-ceph13  ansible_host=192.168.0.23
+localhost ansible_host=127.0.0.1 ansible_connection=local
 
 [ansible]
-ansible
+localhost
 
 [ceph_mon]
-ceph11
-ceph12
-ceph13
+localhost
 
 [ceph_mgr]
-ceph11
-ceph12
-ceph13
+localhost
 
 [ceph_osd]
-ceph11
-ceph12
-ceph13
+localhost
 
 [ceph_mds]
-ceph11
-ceph12
-ceph13
+localhost
 
 [ceph_rgw]
-ceph11
-ceph12
-ceph13
+localhost
