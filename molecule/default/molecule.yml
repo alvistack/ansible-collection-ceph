@@ -30,7 +30,7 @@ platforms:
       - ceph_mds
       - ceph_rgw
 lint: |
-  set -ex
+  set -euo pipefail
   yamllint .
   ansible-lint
   flake8
@@ -45,8 +45,6 @@ dependency:
     force: false
 provisioner:
   name: ansible
-  env:
-    ANSIBLE_ROLES_PATH: ${HOME}/.ansible/roles:/usr/share/ansible/roles:/etc/ansible/roles
   config_options:
     defaults:
       forks: 20
