@@ -13,14 +13,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-# ceph_common
-ceph_mon_host: >-
-  {%- set _ns = namespace() -%}
-  {%- set _ns._params = [] -%}
-  {%- for host in groups['ceph_mon'] -%}
-  {%-   set _ns._params = _ns._params + [hostvars[host].ansible_eth1.ipv4.address] -%}
-  {%- endfor -%}
-  {{ _ns._params | join(',') }}
-ceph_public_network: "{{ (ansible_eth1.ipv4.network + '/' + ansible_eth1.ipv4.netmask) | ipaddr('net') }}"
-ceph_cluster_network: "{{ (ansible_eth1.ipv4.network + '/' + ansible_eth1.ipv4.netmask) | ipaddr('net') }}"
