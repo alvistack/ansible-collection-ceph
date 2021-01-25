@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -euo pipefail
+set -euxo pipefail
 
 kubectl get pv -o name | while read line
 do
@@ -29,7 +29,7 @@ do
 
     mkdir -p symlinks/$namespace
     cd symlinks/$namespace
-    rm $name
+    rm -rf $name
     ln -fs ../../$path $name
     cd ../../
 done
