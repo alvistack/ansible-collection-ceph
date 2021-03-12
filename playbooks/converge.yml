@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-- import_playbook: hosts-install.yml
-- import_playbook: kernel-install.yml
-- import_playbook: ansible-install.yml
-- import_playbook: ceph-install.yml
+- import_playbook: 00-hosts-install.yml
+- import_playbook: 10-kernel-install.yml
+- import_playbook: 20-ansible-install.yml
+- import_playbook: 50-ceph-install.yml
