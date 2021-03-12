@@ -18,7 +18,8 @@
   remote_user: root
   become: true
   tasks:
-    - include_role:
+    - name: include role
+      include_role:
         name: ceph_common
       tags: ceph_common
 
@@ -26,7 +27,8 @@
   remote_user: root
   become: true
   tasks:
-    - include_role:
+    - name: include role
+      include_role:
         name: ceph_mon
       tags: ceph_mon
 
@@ -59,7 +61,8 @@
       changed_when: base64_decode_result is not succeeded
       tags: ceph_mgr
 
-    - include_role:
+    - name: include role
+      include_role:
         name: ceph_mgr
       tags: ceph_mgr
 
@@ -92,7 +95,8 @@
       changed_when: base64_decode_result is not succeeded
       tags: ceph_osd
 
-    - include_role:
+    - name: include role
+      include_role:
         name: ceph_osd
       tags: ceph_osd
 
@@ -125,7 +129,8 @@
       changed_when: base64_decode_result is not succeeded
       tags: ceph_mds
 
-    - include_role:
+    - name: include role
+      include_role:
         name: ceph_mds
       tags: ceph_mds
 
@@ -158,7 +163,8 @@
       changed_when: base64_decode_result is not succeeded
       tags: ceph_rgw
 
-    - include_role:
+    - name: include role
+      include_role:
         name: ceph_rgw
       tags: ceph_rgw
 
@@ -166,7 +172,8 @@
   remote_user: root
   become: true
   tasks:
-    - include_role:
+    - name: include role
+      include_role:
         name: ceph_common
       tags: ceph_common
 
