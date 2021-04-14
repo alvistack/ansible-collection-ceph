@@ -4,6 +4,7 @@
 
 ### Major Changes
 
+  - Support Ceph 16.2 Pacific
   - Support Fedora 34
   - Support Ubuntu 21.04
 
