@@ -4,6 +4,7 @@
 
 ### Major Changes
 
+  - Upgrade minimal Ansible support to 4.0.0
   - Support Ceph 16.2 Pacific
   - Support Fedora 34
   - Support Ubuntu 21.04
