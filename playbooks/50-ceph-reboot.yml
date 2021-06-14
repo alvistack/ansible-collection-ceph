@@ -18,22 +18,26 @@
   remote_user: root
   become: true
   tasks:
-    - name: check
-      command: bash -c '[[ $(ceph health | grep -c HEALTH_OK) == 1 ]]'
-      loop: "{{ ansible_play_hosts }}"
-      delegate_to: "{{ item }}"
-      run_once: true
-      register: result
-      changed_when: result is not succeeded
-      until: result is succeeded
-      retries: 15
+    - name: check, pause and reboot
+      block:
+        - name: ceph health
+          shell: |
+            set -euxo pipefail
+            ceph health | grep 'HEALTH_OK'
+          args:
+            executable: "/bin/bash"
+          register: result
+          changed_when: result is not succeeded
+          until: result is succeeded
+          retries: 60
 
-    - name: reboot
-      reboot:
-        reboot_timeout: 1800
-        test_command: bash -c '[[ $(ceph health | grep -c HEALTH_OK) == 1 ]] && sleep 60'
+        - name: pause
+          pause:
+            seconds: 60
+
+        - name: reboot
+          reboot:
+            reboot_timeout: 1800
       loop: "{{ ansible_play_hosts }}"
       delegate_to: "{{ item }}"
       run_once: true
-      changed_when: false
-      failed_when: false
