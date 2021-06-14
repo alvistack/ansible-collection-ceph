@@ -14,22 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-- hosts: ceph_mon:ceph_mgr:ceph_osd:ceph_mds:ceph_rgw:!ansible
-  remote_user: root
-  become: true
-  tasks:
-    - name: check, pause and reboot
-      include_tasks: 50-ceph-reboot.yml
-      loop: "{{ ansible_play_hosts }}"
-      delegate_to: "{{ item }}"
-      run_once: true
+- name: gahering facts
+  setup:
+  register: result
+  until: result is succeeded
+  retries: 60
 
-- hosts: ansible
-  remote_user: root
-  become: true
-  tasks:
-    - name: check, pause and reboot
-      include_tasks: 90-ansible-reboot.yml
-      loop: "{{ ansible_play_hosts }}"
-      delegate_to: "{{ item }}"
-      run_once: true
+- name: pause
+  pause:
+    seconds: 60
+
+- name: reboot
+  reboot:
+    reboot_timeout: 1800

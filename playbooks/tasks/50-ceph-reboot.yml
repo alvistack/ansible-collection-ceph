@@ -14,25 +14,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-- hosts: ansible
-  remote_user: root
-  become: true
-  tasks:
-    - name: check, pause and reboot
-      block:
-        - name: gahering facts
-          setup:
-          register: result
-          until: result is succeeded
-          retries: 60
+- name: ceph health
+  shell: |
+    set -euxo pipefail
+    ceph health | grep 'HEALTH_OK'
+  args:
+    executable: "/bin/bash"
+  register: result
+  changed_when: result is not succeeded
+  until: result is succeeded
+  retries: 60
 
-        - name: pause
-          pause:
-            seconds: 60
+- name: pause
+  pause:
+    seconds: 60
 
-        - name: reboot
-          reboot:
-            reboot_timeout: 1800
-      loop: "{{ ansible_play_hosts }}"
-      delegate_to: "{{ item }}"
-      run_once: true
+- name: reboot
+  reboot:
+    reboot_timeout: 1800
