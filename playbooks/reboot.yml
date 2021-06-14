@@ -14,22 +14,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-- hosts: ceph_mon:ceph_mgr:ceph_osd:ceph_mds:ceph_rgw:!ansible
-  remote_user: root
-  become: true
-  tasks:
-    - name: check, pause and reboot
-      include_tasks: 50-ceph-reboot.yml
-      loop: "{{ ansible_play_hosts }}"
-      delegate_to: "{{ item }}"
-      run_once: true
-
-- hosts: ansible
-  remote_user: root
-  become: true
-  tasks:
-    - name: check, pause and reboot
-      include_tasks: 90-ansible-reboot.yml
-      loop: "{{ ansible_play_hosts }}"
-      delegate_to: "{{ item }}"
-      run_once: true
+- import_playbook: 50-ceph-reboot.yml
+- import_playbook: 90-ansible-reboot.yml
