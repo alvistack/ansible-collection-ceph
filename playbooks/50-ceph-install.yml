@@ -36,31 +36,6 @@
   remote_user: root
   become: true
   tasks:
-    - name: base64 encode
-      shell: |
-        set -euxo pipefail
-        tar zcfP - {{ _params | join(' ') }} | base64 -w 0
-      vars:
-        _params:
-          - "/etc/ceph/ceph.client.admin.keyring"
-          - "/var/lib/ceph/bootstrap-mgr/ceph.keyring"
-      args:
-        executable: "/bin/bash"
-      delegate_to: "{{ groups['ceph_mon'][0] }}"
-      register: base64_encode_result
-      changed_when: base64_encode_result is not succeeded
-      tags: ceph_mgr
-
-    - name: base64 decode
-      shell: |
-        set -euxo pipefail
-        echo -n {{ base64_encode_result.stdout | quote }} | base64 -d | tar zx -C /
-      args:
-        executable: "/bin/bash"
-      register: base64_decode_result
-      changed_when: base64_decode_result is not succeeded
-      tags: ceph_mgr
-
     - name: include role
       include_role:
         name: ceph_mgr
@@ -70,31 +45,6 @@
   remote_user: root
   become: true
   tasks:
-    - name: base64 encode
-      shell: |
-        set -euxo pipefail
-        tar zcfP - {{ _params | join(' ') }} | base64 -w 0
-      vars:
-        _params:
-          - "/etc/ceph/ceph.client.admin.keyring"
-          - "/var/lib/ceph/bootstrap-osd/ceph.keyring"
-      args:
-        executable: "/bin/bash"
-      delegate_to: "{{ groups['ceph_mon'][0] }}"
-      register: base64_encode_result
-      changed_when: base64_encode_result is not succeeded
-      tags: ceph_osd
-
-    - name: base64 decode
-      shell: |
-        set -euxo pipefail
-        echo -n {{ base64_encode_result.stdout | quote }} | base64 -d | tar zx -C /
-      args:
-        executable: "/bin/bash"
-      register: base64_decode_result
-      changed_when: base64_decode_result is not succeeded
-      tags: ceph_osd
-
     - name: include role
       include_role:
         name: ceph_osd
@@ -104,31 +54,6 @@
   remote_user: root
   become: true
   tasks:
-    - name: base64 encode
-      shell: |
-        set -euxo pipefail
-        tar zcfP - {{ _params | join(' ') }} | base64 -w 0
-      vars:
-        _params:
-          - "/etc/ceph/ceph.client.admin.keyring"
-          - "/var/lib/ceph/bootstrap-mds/ceph.keyring"
-      args:
-        executable: "/bin/bash"
-      delegate_to: "{{ groups['ceph_mon'][0] }}"
-      register: base64_encode_result
-      changed_when: base64_encode_result is not succeeded
-      tags: ceph_mds
-
-    - name: base64 decode
-      shell: |
-        set -euxo pipefail
-        echo -n {{ base64_encode_result.stdout | quote }} | base64 -d | tar zx -C /
-      args:
-        executable: "/bin/bash"
-      register: base64_decode_result
-      changed_when: base64_decode_result is not succeeded
-      tags: ceph_mds
-
     - name: include role
       include_role:
         name: ceph_mds
@@ -138,31 +63,6 @@
   remote_user: root
   become: true
   tasks:
-    - name: base64 encode
-      shell: |
-        set -euxo pipefail
-        tar zcfP - {{ _params | join(' ') }} | base64 -w 0
-      vars:
-        _params:
-          - "/etc/ceph/ceph.client.admin.keyring"
-          - "/var/lib/ceph/bootstrap-rgw/ceph.keyring"
-      args:
-        executable: "/bin/bash"
-      delegate_to: "{{ groups['ceph_mon'][0] }}"
-      register: base64_encode_result
-      changed_when: base64_encode_result is not succeeded
-      tags: ceph_rgw
-
-    - name: base64 decode
-      shell: |
-        set -euxo pipefail
-        echo -n {{ base64_encode_result.stdout | quote }} | base64 -d | tar zx -C /
-      args:
-        executable: "/bin/bash"
-      register: base64_decode_result
-      changed_when: base64_decode_result is not succeeded
-      tags: ceph_rgw
-
     - name: include role
       include_role:
         name: ceph_rgw
