@@ -19,7 +19,7 @@
   become: true
   tasks:
     - name: ceph health
-      command: bash -c "(ceph health | grep 'HEALTH_OK') && sleep 60"
+      command: bash -c "(ceph health | grep 'HEALTH_OK')"
       loop: "{{ ansible_play_hosts }}"
       delegate_to: "{{ item }}"
       run_once: true
