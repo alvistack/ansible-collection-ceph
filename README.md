@@ -17,7 +17,7 @@ environment.
 
 ## Requirements
 
-This collection require Ansible community package 4.2 or higher.
+This collection require Ansible community package 4.3 or higher.
 
 This collection was designed for:
 
@@ -129,8 +129,8 @@ running Molecule.
 ## License
 
   - Code released under [Apache License 2.0](LICENSE)
-  - Docs released under [CC
-    BY 4.0](http://creativecommons.org/licenses/by/4.0/)
+  - Docs released under [CC BY
+    4.0](http://creativecommons.org/licenses/by/4.0/)
 
 ## Author Information
 
