@@ -15,4 +15,4 @@
 # limitations under the License.
 
 # ceph_common
-ceph_release: "{{ _ceph_release }}"
+# ceph_release: "16.2"
