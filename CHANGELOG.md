@@ -4,7 +4,8 @@
 
 ### Major Changes
 
-  - Upgrade minimal Ansible community package support to 4.4.0
+  - Install dependencies with package manager
+  - Upgrade minimal Ansible community package support to 4.5.0
   - Predefine `ceph_release` with latest available per distribution
 
 ## 20210718.1.1 - 2021-07-18
