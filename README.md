@@ -1,5 +1,7 @@
 # Ansible Collection for Ceph
 
+<img src="/alvistack.svg" width="75" alt="AlviStack">
+
 [![Gitlab pipeline status](https://img.shields.io/gitlab/pipeline/alvistack/ansible-collection-ceph/master)](https://gitlab.com/alvistack/ansible-collection-ceph/-/pipelines)
 [![GitHub release](https://img.shields.io/github/release/alvistack/ansible-collection-ceph.svg)](https://github.com/alvistack/ansible-collection-ceph/releases)
 [![GitHub license](https://img.shields.io/github/license/alvistack/ansible-collection-ceph.svg)](https://github.com/alvistack/ansible-collection-ceph/blob/master/LICENSE)
