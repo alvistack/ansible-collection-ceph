@@ -34,9 +34,9 @@ Start by cloning the repository, checkout the corresponding branch, and init wit
     mkdir -p /opt/ansible-collection-ceph
     cd /opt/ansible-collection-ceph
     git init
-    git remote add alvistack https://github.com/alvistack/ansible-collection-ceph.git
+    git remote add upstream https://github.com/alvistack/ansible-collection-ceph.git
     git fetch --all --prune
-    git checkout alvistack/develop -- .
+    git checkout upstream/develop -- .
     git submodule sync --recursive
     git submodule update --init --recursive
     
@@ -89,9 +89,9 @@ Start by copying the default inventory for customization:
 
 You should update the following files as per your production environment:
 
-    - `/etc/ansible/hosts`
+  - `/etc/ansible/hosts`
       - Update with your inventory hostnames and IPs
-    - `/etc/ansible/group_vars/all/*.yml`
+  - `/etc/ansible/group_vars/all/*.yml`
       - Update `*_release` and `*_version` if you hope to pin the deployment into any legacy supported version
 
 Once update now run the playbooks:
