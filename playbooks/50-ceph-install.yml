@@ -23,7 +23,7 @@
   become: true
   tasks:
     - name: include role
-      include_role:
+      ansible.builtin.include_role:
         name: ceph_common
       tags: ceph_common
 
@@ -32,7 +32,7 @@
   become: true
   tasks:
     - name: include role
-      include_role:
+      ansible.builtin.include_role:
         name: ceph_mon
       tags: ceph_mon
 
@@ -41,7 +41,7 @@
   become: true
   tasks:
     - name: include role
-      include_role:
+      ansible.builtin.include_role:
         name: ceph_mgr
       tags: ceph_mgr
 
@@ -50,7 +50,7 @@
   become: true
   tasks:
     - name: include role
-      include_role:
+      ansible.builtin.include_role:
         name: ceph_osd
       tags: ceph_osd
 
@@ -59,7 +59,7 @@
   become: true
   tasks:
     - name: include role
-      include_role:
+      ansible.builtin.include_role:
         name: ceph_mds
       tags: ceph_mds
 
@@ -68,7 +68,7 @@
   become: true
   tasks:
     - name: include role
-      include_role:
+      ansible.builtin.include_role:
         name: ceph_rgw
       tags: ceph_rgw
 
@@ -77,12 +77,12 @@
   become: true
   tasks:
     - name: include role
-      include_role:
+      ansible.builtin.include_role:
         name: ceph_common
       tags: ceph_common
 
     - name: base64 encode
-      shell: |
+      ansible.builtin.shell: |
         set -euxo pipefail
         tar zcfP - {{ _params | join(' ') }} | base64 -w 0
       vars:
@@ -96,7 +96,7 @@
       tags: ceph_common
 
     - name: base64 decode
-      shell: |
+      ansible.builtin.shell: |
         set -euxo pipefail
         echo -n {{ base64_encode_result.stdout | quote }} | base64 -d | tar zx -C /
       args:
