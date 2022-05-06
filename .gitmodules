@@ -1,76 +1,76 @@
-[submodule "roles/alvistack.ansible"]
-	path = roles/alvistack.ansible
+[submodule "roles/ansible"]
+	path = roles/ansible
 	url = https://github.com/alvistack/ansible-role-ansible.git
 	branch = develop
-[submodule "roles/alvistack.bootstrap"]
-	path = roles/alvistack.bootstrap
+[submodule "roles/bootstrap"]
+	path = roles/bootstrap
 	url = https://github.com/alvistack/ansible-role-bootstrap.git
 	branch = develop
-[submodule "roles/alvistack.ceph_common"]
-	path = roles/alvistack.ceph_common
+[submodule "roles/ceph_common"]
+	path = roles/ceph_common
 	url = https://github.com/alvistack/ansible-role-ceph_common.git
 	branch = develop
-[submodule "roles/alvistack.ceph_mds"]
-	path = roles/alvistack.ceph_mds
+[submodule "roles/ceph_mds"]
+	path = roles/ceph_mds
 	url = https://github.com/alvistack/ansible-role-ceph_mds.git
 	branch = develop
-[submodule "roles/alvistack.ceph_mgr"]
-	path = roles/alvistack.ceph_mgr
+[submodule "roles/ceph_mgr"]
+	path = roles/ceph_mgr
 	url = https://github.com/alvistack/ansible-role-ceph_mgr.git
 	branch = develop
-[submodule "roles/alvistack.ceph_mon"]
-	path = roles/alvistack.ceph_mon
+[submodule "roles/ceph_mon"]
+	path = roles/ceph_mon
 	url = https://github.com/alvistack/ansible-role-ceph_mon.git
 	branch = develop
-[submodule "roles/alvistack.ceph_osd"]
-	path = roles/alvistack.ceph_osd
+[submodule "roles/ceph_osd"]
+	path = roles/ceph_osd
 	url = https://github.com/alvistack/ansible-role-ceph_osd.git
 	branch = develop
-[submodule "roles/alvistack.ceph_rgw"]
-	path = roles/alvistack.ceph_rgw
+[submodule "roles/ceph_rgw"]
+	path = roles/ceph_rgw
 	url = https://github.com/alvistack/ansible-role-ceph_rgw.git
 	branch = develop
-[submodule "roles/alvistack.chrony"]
-	path = roles/alvistack.chrony
+[submodule "roles/chrony"]
+	path = roles/chrony
 	url = https://github.com/alvistack/ansible-role-chrony.git
 	branch = develop
-[submodule "roles/alvistack.git"]
-	path = roles/alvistack.git
+[submodule "roles/git"]
+	path = roles/git
 	url = https://github.com/alvistack/ansible-role-git.git
 	branch = develop
-[submodule "roles/alvistack.kernel"]
-	path = roles/alvistack.kernel
+[submodule "roles/kernel"]
+	path = roles/kernel
 	url = https://github.com/alvistack/ansible-role-kernel.git
 	branch = develop
-[submodule "roles/alvistack.locales"]
-	path = roles/alvistack.locales
+[submodule "roles/locales"]
+	path = roles/locales
 	url = https://github.com/alvistack/ansible-role-locales.git
 	branch = develop
-[submodule "roles/alvistack.python"]
-	path = roles/alvistack.python
+[submodule "roles/python"]
+	path = roles/python
 	url = https://github.com/alvistack/ansible-role-python.git
 	branch = develop
-[submodule "roles/alvistack.rclone"]
-	path = roles/alvistack.rclone
+[submodule "roles/rclone"]
+	path = roles/rclone
 	url = https://github.com/alvistack/ansible-role-rclone.git
 	branch = develop
-[submodule "roles/alvistack.restic"]
-	path = roles/alvistack.restic
+[submodule "roles/restic"]
+	path = roles/restic
 	url = https://github.com/alvistack/ansible-role-restic.git
 	branch = develop
-[submodule "roles/alvistack.sshd"]
-	path = roles/alvistack.sshd
+[submodule "roles/sshd"]
+	path = roles/sshd
 	url = https://github.com/alvistack/ansible-role-sshd.git
 	branch = develop
-[submodule "roles/alvistack.timezone"]
-	path = roles/alvistack.timezone
+[submodule "roles/timezone"]
+	path = roles/timezone
 	url = https://github.com/alvistack/ansible-role-timezone.git
 	branch = develop
-[submodule "roles/alvistack.vim"]
-	path = roles/alvistack.vim
+[submodule "roles/vim"]
+	path = roles/vim
 	url = https://github.com/alvistack/ansible-role-vim.git
 	branch = develop
-[submodule "roles/alvistack.zram_generator"]
-	path = roles/alvistack.zram_generator
+[submodule "roles/zram_generator"]
+	path = roles/zram_generator
 	url = https://github.com/alvistack/ansible-role-zram_generator.git
 	branch = develop
