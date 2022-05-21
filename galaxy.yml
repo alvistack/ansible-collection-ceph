@@ -20,7 +20,8 @@ description: Ansible Collection for Ceph
 
 version: 0.0.0
 readme: README.md
-license: Apache-2.0
+license:
+  - Apache-2.0
 
 repository: https://github.com/alvistack/ansible-collection-ceph
 documentation: https://github.com/alvistack/ansible-collection-ceph
