@@ -32,7 +32,8 @@
       ansible.builtin.reboot:
         connect_timeout: 600
         reboot_timeout: 600
-        test_command: bash -c "(ceph health detail | grep 'HEALTH_OK') && sleep 60"
+        post_reboot_delay: 60
+        test_command: bash -c "(ceph health detail | grep 'HEALTH_OK')"
       loop: "{{ ansible_play_hosts }}"
       delegate_to: "{{ item }}"
       run_once: true
