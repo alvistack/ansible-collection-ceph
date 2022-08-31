@@ -14,11 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-- hosts: all
+- name: 50-ceph-install | all
+  hosts: all
   remote_user: root
   become: true
 
-- hosts: ceph_mon:ceph_mgr:ceph_osd:ceph_mds:ceph_rgw
+- name: 50-ceph-install | ceph_mon:ceph_mgr:ceph_osd:ceph_mds:ceph_rgw
+  hosts: ceph_mon:ceph_mgr:ceph_osd:ceph_mds:ceph_rgw
   remote_user: root
   become: true
   tasks:
@@ -27,7 +29,8 @@
         name: ceph_common
       tags: ceph_common
 
-- hosts: ceph_mon
+- name: 50-ceph-install | ceph_mon
+  hosts: ceph_mon
   remote_user: root
   become: true
   tasks:
@@ -36,7 +39,8 @@
         name: ceph_mon
       tags: ceph_mon
 
-- hosts: ceph_mgr
+- name: 50-ceph-install | ceph_mgr
+  hosts: ceph_mgr
   remote_user: root
   become: true
   tasks:
@@ -45,7 +49,8 @@
         name: ceph_mgr
       tags: ceph_mgr
 
-- hosts: ceph_osd
+- name: 50-ceph-install | ceph_osd
+  hosts: ceph_osd
   remote_user: root
   become: true
   tasks:
@@ -54,7 +59,8 @@
         name: ceph_osd
       tags: ceph_osd
 
-- hosts: ceph_mds
+- name: 50-ceph-install | ceph_mds
+  hosts: ceph_mds
   remote_user: root
   become: true
   tasks:
@@ -63,7 +69,8 @@
         name: ceph_mds
       tags: ceph_mds
 
-- hosts: ceph_rgw
+- name: 50-ceph-install | ceph_rgw
+  hosts: ceph_rgw
   remote_user: root
   become: true
   tasks:
@@ -72,7 +79,8 @@
         name: ceph_rgw
       tags: ceph_rgw
 
-- hosts: ansible
+- name: 50-ceph-install | ansible
+  hosts: ansible
   remote_user: root
   become: true
   tasks:
