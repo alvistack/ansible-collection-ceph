@@ -3,3 +3,5 @@ skip_list:
   - jinja[spacing]
   - name[casing]
   - yaml[line-length]
+kinds:
+  - playbook: "playbooks/*.yml"
