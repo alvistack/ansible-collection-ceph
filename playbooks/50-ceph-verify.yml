@@ -41,7 +41,7 @@
       ansible.builtin.shell:
         cmd: |
           set -euxo pipefail
-          ceph health detail | grep 'HEALTH_OK'
+          ceph crash archive-all && ceph health detail | grep 'HEALTH_OK'
       args:
         executable: "/bin/bash"
       when: inventory_hostname == ansible_play_hosts[0]
