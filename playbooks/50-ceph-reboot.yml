@@ -21,7 +21,7 @@
   tasks:
     - name: ceph health detail
       ansible.builtin.command:
-        cmd: bash -c "ceph health detail | grep 'HEALTH_OK'"
+        cmd: bash -c "ceph crash archive-all && ceph health detail | grep 'HEALTH_OK'"
       when: inventory_hostname == ansible_play_hosts[0]
       register: result
       changed_when: result is not succeeded
@@ -34,5 +34,5 @@
         reboot_timeout: 1800
         pre_reboot_delay: 60
         post_reboot_delay: 60
-        test_command: bash -c "ceph health detail | grep 'HEALTH_OK'"
+        test_command: bash -c "ceph crash archive-all && ceph health detail | grep 'HEALTH_OK'"
       throttle: 1
