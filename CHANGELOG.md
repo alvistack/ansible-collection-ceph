@@ -4,6 +4,16 @@
 
 ### Major Changes
 
+## 20230617.1.1 - 2023-06-17
+
+### Major Changes
+
+## 20230617.1.1 - 2023-06-17
+
+### Major Changes
+
+-   Remove Ubuntu 18.04 support
+-   Remove Debian 10 support
 -   Support Debian 12
 -   Support openSUSE Leap 15.5
 
