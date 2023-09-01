@@ -4,6 +4,7 @@
 
 ### Major Changes
 
+-   Support Ceph 18.2 Reef
 -   Support Ansible community package 8.3.0
 
 ## 20230724.1.2 - 2023-07-24
