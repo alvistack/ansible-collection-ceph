@@ -96,7 +96,7 @@
           tar zcfP - {{ _params | join(' ') }} | base64 -w 0
       vars:
         _params:
-          - "/etc/ceph/ceph.client.admin.keyring"
+          - "/etc/ceph"
       args:
         executable: "/bin/bash"
       delegate_to: "{{ groups['ceph_mon'][0] }}"
