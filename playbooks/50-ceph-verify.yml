@@ -19,6 +19,19 @@
   remote_user: root
   become: true
   tasks:
+    - name: ceph health detail
+      ansible.builtin.shell:
+        cmd: |
+          set -euxo pipefail
+          ceph crash archive-all && ceph health detail | grep 'HEALTH_OK'
+      args:
+        executable: "/bin/bash"
+      when: inventory_hostname == ansible_play_hosts[0]
+      register: result
+      changed_when: result is not succeeded
+      until: result is succeeded
+      retries: 60
+
     - name: ceph --version
       ansible.builtin.command:
         cmd: ceph --version
@@ -36,16 +49,3 @@
         cmd: mount.ceph -h
       register: result
       changed_when: result is not succeeded
-
-    - name: ceph health detail
-      ansible.builtin.shell:
-        cmd: |
-          set -euxo pipefail
-          ceph crash archive-all && ceph health detail | grep 'HEALTH_OK'
-      args:
-        executable: "/bin/bash"
-      when: inventory_hostname == ansible_play_hosts[0]
-      register: result
-      changed_when: result is not succeeded
-      until: result is succeeded
-      retries: 60

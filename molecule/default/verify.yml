@@ -14,5 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+- name: import playbook ../../playbooks/50-ceph-reboot.yml
+  import_playbook: ../../playbooks/50-ceph-reboot.yml
+
+- name: import playbook ../../playbooks/90-ansible-reboot.yml
+  import_playbook: ../../playbooks/90-ansible-reboot.yml
+
 - name: import playbook ../../playbooks/verify.yml
   import_playbook: ../../playbooks/verify.yml
