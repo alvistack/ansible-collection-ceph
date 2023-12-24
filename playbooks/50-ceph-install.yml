@@ -27,7 +27,6 @@
     - name: include role
       ansible.builtin.include_role:
         name: ceph_common
-      tags: ceph_common
 
 - name: 50-ceph-install | ceph_mon
   hosts: ceph_mon
@@ -37,7 +36,6 @@
     - name: include role
       ansible.builtin.include_role:
         name: ceph_mon
-      tags: ceph_mon
 
 - name: 50-ceph-install | ceph_mgr
   hosts: ceph_mgr
@@ -47,7 +45,6 @@
     - name: include role
       ansible.builtin.include_role:
         name: ceph_mgr
-      tags: ceph_mgr
 
 - name: 50-ceph-install | ceph_osd
   hosts: ceph_osd
@@ -57,7 +54,6 @@
     - name: include role
       ansible.builtin.include_role:
         name: ceph_osd
-      tags: ceph_osd
 
 - name: 50-ceph-install | ceph_mds
   hosts: ceph_mds
@@ -67,7 +63,6 @@
     - name: include role
       ansible.builtin.include_role:
         name: ceph_mds
-      tags: ceph_mds
 
 - name: 50-ceph-install | ceph_rgw
   hosts: ceph_rgw
@@ -77,7 +72,6 @@
     - name: include role
       ansible.builtin.include_role:
         name: ceph_rgw
-      tags: ceph_rgw
 
 - name: 50-ceph-install | ansible
   hosts: ansible
@@ -87,7 +81,6 @@
     - name: include role
       ansible.builtin.include_role:
         name: ceph_common
-      tags: ceph_common
 
     - name: base64 encode
       ansible.builtin.shell:
@@ -102,7 +95,6 @@
       delegate_to: "{{ groups['ceph_mon'][0] }}"
       register: base64_encode_result
       changed_when: base64_encode_result is not succeeded
-      tags: ceph_common
 
     - name: base64 decode
       ansible.builtin.shell:
@@ -113,4 +105,3 @@
         executable: "/bin/bash"
       register: base64_decode_result
       changed_when: base64_decode_result is not succeeded
-      tags: ceph_common
