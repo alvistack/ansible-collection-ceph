@@ -23,13 +23,13 @@ This collection require Ansible community package 4.10 or higher.
 
 This collection was designed for:
 
--   Ubuntu 20.04, 22.04, 23.10, 24.04
--   AlmaLinux 8, 9
--   openSUSE Leap 15.5, Tumbleweed
--   Debian 11, 12, Testing
--   Fedora 38, 39, 40, Rawhide
--   CentOS 7, 8 Stream, 9 Stream
--   RHEL 7, 8, 9
+- Ubuntu 20.04, 22.04, 23.10, 24.04
+- AlmaLinux 8, 9
+- openSUSE Leap 15.5, Tumbleweed
+- Debian 11, 12, Testing
+- Fedora 38, 39, 40, Rawhide
+- CentOS 7, 8 Stream, 9 Stream
+- RHEL 7, 8, 9
 
 ## Quick Start
 
@@ -62,9 +62,9 @@ init with `git submodule`, then install Ansible (see
 
 All-in-one (AIO) build is a great way to perform an Ceph build for:
 
--   A development environment
--   An overview of how all the Ceph services fit together
--   A simple lab deployment
+- A development environment
+- An overview of how all the Ceph services fit together
+- A simple lab deployment
 
 Simply execule our default Molecule test case and it will deploy all
 default components into your localhost:
@@ -85,12 +85,12 @@ least 3 instances for Ceph is recommended.
 
 This deployment will setup the follow components:
 
--   [Ceph](https://ceph.io/)
-    -   Ceph Monitor Daemon
-    -   Ceph Manager Daemon
-    -   Ceph Object Storage Daemon
-    -   Ceph Metadata Server
-    -   Ceph Object Gateway
+- [Ceph](https://ceph.io/)
+  - Ceph Monitor Daemon
+  - Ceph Manager Daemon
+  - Ceph Object Storage Daemon
+  - Ceph Metadata Server
+  - Ceph Object Gateway
 
 Start by copying the default inventory for customization:
 
@@ -101,11 +101,11 @@ Start by copying the default inventory for customization:
 You should update the following files as per your production
 environment:
 
--   `/etc/ansible/hosts`
-    -   Update with your inventory hostnames and IPs
--   `/etc/ansible/group_vars/all/*.yml`
-    -   Update `*_release` and `*_version` if you hope to pin the
-        deployment into any legacy supported version
+- `/etc/ansible/hosts`
+  - Update with your inventory hostnames and IPs
+- `/etc/ansible/group_vars/all/*.yml`
+  - Update `*_release` and `*_version` if you hope to pin the
+    deployment into any legacy supported version
 
 Once update now run the playbooks:
 
@@ -149,12 +149,12 @@ latest packages provided by the base image project.
 
 ## License
 
--   Code released under [Apache License 2.0](LICENSE)
--   Docs released under [CC BY
-    4.0](http://creativecommons.org/licenses/by/4.0/)
+- Code released under [Apache License 2.0](LICENSE)
+- Docs released under [CC BY
+  4.0](http://creativecommons.org/licenses/by/4.0/)
 
 ## Author Information
 
--   Wong Hoi Sing Edison
-    -   <https://twitter.com/hswong3i>
-    -   <https://github.com/hswong3i>
+- Wong Hoi Sing Edison
+  - <https://twitter.com/hswong3i>
+  - <https://github.com/hswong3i>
