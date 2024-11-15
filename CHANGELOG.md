@@ -2,6 +2,7 @@
 
 ## YYYYMMDD.Y.Z - TBC
 
+- Support Ceph 19.2 Squid
 - Support Ubuntu 24.10
 - Support Ansible community package 10.5.0
 
