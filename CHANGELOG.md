@@ -2,6 +2,10 @@
 
 ## YYYYMMDD.Y.Z - TBC
 
+- Remove Debian 11 support
+- Remove openSUSE Leap 15.5 support
+- Remove Fedora 39 support
+
 - Support Ansible community package 11.0.0
 - Support Ceph 19.2 Squid
 - Support Ubuntu 24.10
