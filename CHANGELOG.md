@@ -2,6 +2,8 @@
 
 ## YYYYMMDD.Y.Z - TBC
 
+- Remove Fedora 39 support
+
 - Support Ansible community package 11.0.0
 - Support Ceph 19.2 Squid
 - Support Ubuntu 24.10
