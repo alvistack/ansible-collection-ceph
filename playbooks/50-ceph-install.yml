@@ -85,9 +85,9 @@
       ansible.builtin.shell:
         cmd: |
           set -euxo pipefail
-          tar zcfP - {{ _params | join(' ') }} | base64 -w 0
+          tar zcfP - {{ params | join(' ') }} | base64 -w 0
       vars:
-        _params:
+        params:
           - /etc/ceph/ceph.client.admin.keyring
       args:
         executable: /bin/bash
