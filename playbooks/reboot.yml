@@ -21,9 +21,9 @@
     - name: check
       ansible.builtin.shell:
         cmd: |
-          set -ex
+          set -e
           ceph crash archive-all
-          ceph health detail | grep 'HEALTH_OK'
+          [ $(ceph health detail | grep -c 'HEALTH_OK') -eq 1 ]
       when: inventory_hostname == ansible_play_hosts[0]
       register: result
       changed_when: result is not succeeded
@@ -37,9 +37,9 @@
         pre_reboot_delay: 60
         post_reboot_delay: 60
         test_command: |
-          set -ex
+          set -e
           ceph crash archive-all
-          ceph health detail | grep 'HEALTH_OK'
+          [ $(ceph health detail | grep -c 'HEALTH_OK') -eq 1 ]
       throttle: 1
       changed_when: false
       failed_when: false
@@ -56,7 +56,7 @@
         pre_reboot_delay: 60
         post_reboot_delay: 60
         test_command: |
-          set -ex
+          set -e
           whoami
       throttle: 1
       changed_when: false
