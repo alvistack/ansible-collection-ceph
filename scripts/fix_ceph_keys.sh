@@ -43,15 +43,13 @@ for host in "${CEPH_NODES[@]}"; do
     fi
 
     for unit in $units; do
-        # Handle systemd service names correctly for both standard services and ceph-radosgw
-        if [[ "$unit" =~ ceph-radosgw@([^.]+)\.service ]]; then
+        # Fixed logic: handles both ceph-radosgw@rgw.node22.service and standard units
+        if [[ "$unit" =~ ceph-radosgw@rgw\.(.+)\.service ]] || [[ "$unit" =~ ceph-radosgw@(.+)\.service ]] || [[ "$unit" =~ ceph-rgw@(.+)\.service ]]; then
             TYPE="radosgw"
-            ID="${BASH_REMATCH[1]}"
-            SYSTEMD_SERVICE="ceph-radosgw@${ID}"
-            # Maps client.rgw.<ID> for auth database commands
-            ENTITY="client.rgw.${ID}"
-            # Directly passes full daemon ID (e.g. rgw.tie7kohra7ch-2) to keyring helper
-            KEYRING_PATH=$(get_keyring_path "$TYPE" "$ID")
+            NODE_NAME="${BASH_REMATCH[1]}"
+            SYSTEMD_SERVICE="$unit"
+            ENTITY="client.rgw.${NODE_NAME}"
+            KEYRING_PATH="/var/lib/ceph/radosgw/ceph-rgw.${NODE_NAME}/keyring"
         else
             daemon_str=$(echo "$unit" | sed -E 's/ceph-([^@]+)@([^.]+)\.service/\1 \2/')
             TYPE=$(echo "$daemon_str" | awk '{print $1}')
@@ -62,11 +60,11 @@ for host in "${CEPH_NODES[@]}"; do
         fi
 
         # Skip MONs or malformed lines
-        if [[ -z "$TYPE" || -z "$ID" || "$TYPE" == "mon" ]]; then
+        if [[ -z "$TYPE" || "$TYPE" == "mon" ]]; then
             continue
         fi
 
-        echo "Processing ${ENTITY} on ${host}..."
+        echo "Processing ${ENTITY} (${SYSTEMD_SERVICE}) on ${host}..."
 
         # 1. Stop local service on node
         ssh -q "root@${host}" "systemctl stop ${SYSTEMD_SERVICE}" || true
@@ -81,7 +79,6 @@ for host in "${CEPH_NODES[@]}"; do
             echo "Rotating ${ENTITY} to aes256k on ${host}:${KEYRING_PATH}..."
             ssh -q "root@${host}" "mkdir -p \$(dirname '${KEYRING_PATH}')"
             
-            # Temporary file on local controller ensures pipefail compatibility
             ceph auth rotate --key-type=aes256k "${ENTITY}" > /tmp/ceph_rotated_key.tmp
             scp -q /tmp/ceph_rotated_key.tmp "root@${host}:${KEYRING_PATH}"
             rm -f /tmp/ceph_rotated_key.tmp
