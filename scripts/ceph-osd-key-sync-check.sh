@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 #
 # ceph-osd-key-sync-check.sh
-# Audits and optionally repairs out-of-sync BlueStore OSD device keys.
+# Audits and automatically repairs out-of-sync BlueStore OSD device keys.
 #
 
 set -euo pipefail
 
-# Set to "true" to auto-apply fixes using set-label-key
-AUTO_FIX="false"
+# Enabled AUTO_FIX to automatically apply set-label-key repairs
+AUTO_FIX="true"
 
-echo "=== Ceph BlueStore Key Drift Audit ==="
+echo "=== Ceph BlueStore Key Drift Audit & Repair ==="
 
 for osd_dir in /var/lib/ceph/osd/ceph-*; do
     [[ -d "$osd_dir" ]] || continue
@@ -22,52 +22,54 @@ for osd_dir in /var/lib/ceph/osd/ceph-*; do
         continue
     fi
 
-  # Get key from Ceph MON auth
-  mon_key=$(ceph auth get-key "osd.${osd_id}" 2>/dev/null || true)
+    # Get active key from Ceph MON auth
+    mon_key=$(ceph auth get-key "osd.${osd_id}" 2>/dev/null || true)
 
-  if [[ -z "$mon_key" ]]; then
-      echo "[!] OSD.${osd_id}: Failed to fetch key from MON cluster."
-      continue
-  fi
+    if [[ -z "$mon_key" ]]; then
+        echo "[!] OSD.${osd_id}: Failed to fetch key from MON cluster."
+        continue
+    fi
 
-  # Get key from local tmpfs keyring
-  local_key=""
-  if [[ -f "${osd_dir}/keyring" ]]; then
-      local_key=$(awk -F'= ' '/key =/ {print $2}' "${osd_dir}/keyring" | tr -d ' \r\n')
-  fi
+    # Get key from local tmpfs keyring
+    local_key=""
+    if [[ -f "${osd_dir}/keyring" ]]; then
+        local_key=$(awk -F'= ' '/key =/ {print $2}' "${osd_dir}/keyring" | tr -d ' \r\n')
+    fi
 
-  echo "----------------------------------------"
-  echo "OSD ID:       ${osd_id}"
-  echo "Block Dev:    ${block_dev}"
-  echo "MON Key:      ${mon_key}"
-  echo "Local Key:    ${local_key:-<MISSING>}"
+    echo "----------------------------------------"
+    echo "OSD ID:       ${osd_id}"
+    echo "Block Dev:    ${block_dev}"
+    echo "MON Key:      ${mon_key}"
+    echo "Local Key:    ${local_key:-<MISSING>}"
 
-  if [[ "$mon_key" == "$local_key" ]]; then
-      echo "Status:       [ OK ] Keyring is synchronized."
-  else
-      echo "Status:       [ MISMATCH ] Key on disk does not match MON cluster key!"
+    if [[ "$mon_key" == "$local_key" ]]; then
+        echo "Status:       [ OK ] Keyring is synchronized."
+    else
+        echo "Status:       [ MISMATCH ] Key on disk does not match MON cluster key!"
 
-      if [[ "$AUTO_FIX" == "true" ]]; then
-          echo "--> Repairing OSD.${osd_id} metadata on ${block_dev}..."
+        if [[ "$AUTO_FIX" == "true" ]]; then
+            echo "--> Repairing OSD.${osd_id} metadata on ${block_dev}..."
 
-          tmp_keyring=$(mktemp)
-          ceph auth get "osd.${osd_id}" -o "$tmp_keyring"
+            tmp_keyring=$(mktemp /tmp/osd_key_XXXXXX.keyring)
+            ceph auth get "osd.${osd_id}" -o "$tmp_keyring"
 
-          systemctl stop "ceph-osd@${osd_id}.service" || true
+            # 1. Update the live tmpfs file so it matches immediately
+            cp "$tmp_keyring" "${osd_dir}/keyring"
+            chown ceph:ceph "${osd_dir}/keyring"
+            chmod 600 "${osd_dir}/keyring"
 
-          ceph-bluestore-tool --dev "$block_dev" set-label-key --key osd_key -v "$tmp_keyring"
+            # 2. Stop service before flashing device metadata
+            systemctl stop "ceph-osd@${osd_id}.service" || true
 
-          rm -f "$tmp_keyring"
-          systemctl reset-failed "ceph-osd@${osd_id}.service"
-          systemctl start "ceph-osd@${osd_id}.service"
+            # 3. Burn key directly to BlueStore device label
+            ceph-bluestore-tool --dev "$block_dev" set-label-key --key osd_key -v "$tmp_keyring"
 
-          echo "--> Repair complete for OSD.${osd_id}."
-      else
-          echo "--> Run fix manually:"
-          echo "    1. ceph auth get osd.${osd_id} -o /tmp/osd${osd_id}.keyring"
-          echo "    2. systemctl stop ceph-osd@${osd_id}.service"
-          echo "    3. ceph-bluestore-tool --dev ${block_dev} set-label-key --key osd_key -v /tmp/osd${osd_id}.keyring"
-          echo "    4. systemctl start ceph-osd@${osd_id}.service"
-      fi
-  fi
+            # 4. Clean up and restart
+            rm -f "$tmp_keyring"
+            systemctl reset-failed "ceph-osd@${osd_id}.service" || true
+            systemctl start "ceph-osd@${osd_id}.service"
+
+            echo "--> Repair complete and service restarted for OSD.${osd_id}."
+        fi
+    fi
 done
