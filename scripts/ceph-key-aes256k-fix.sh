@@ -5,8 +5,8 @@ set -euxo pipefail
 readonly CEPH_NODES=("node22" "node23" "node24")
 
 if [ "$EUID" -ne 0 ]; then
-  echo "Please run as root on ansible21."
-  exit 1
+    echo "Please run as root on ansible21."
+    exit 1
 fi
 
 echo "================================================="
@@ -43,7 +43,7 @@ for host in "${CEPH_NODES[@]}"; do
     fi
 
     for unit in $units; do
-        # Fixed logic: handles both ceph-radosgw@rgw.node22.service and standard units
+        # Handles radosgw and standard units
         if [[ "$unit" =~ ceph-radosgw@rgw\.(.+)\.service ]] || [[ "$unit" =~ ceph-radosgw@(.+)\.service ]] || [[ "$unit" =~ ceph-rgw@(.+)\.service ]]; then
             TYPE="radosgw"
             NODE_NAME="${BASH_REMATCH[1]}"
@@ -78,11 +78,24 @@ for host in "${CEPH_NODES[@]}"; do
         if [ -n "$KEYRING_PATH" ]; then
             echo "Rotating ${ENTITY} to aes256k on ${host}:${KEYRING_PATH}..."
             ssh -q "root@${host}" "mkdir -p \$(dirname '${KEYRING_PATH}')"
-            
+
             ceph auth rotate --key-type=aes256k "${ENTITY}" > /tmp/ceph_rotated_key.tmp
             scp -q /tmp/ceph_rotated_key.tmp "root@${host}:${KEYRING_PATH}"
-            rm -f /tmp/ceph_rotated_key.tmp
 
+            # If daemon is an OSD, write updated key into raw BlueStore block metadata
+            if [ "$TYPE" == "osd" ]; then
+                echo "Writing updated osd_key label to raw BlueStore device on ${host} for OSD.${ID}..."
+                ssh -q "root@${host}" "
+                block_dev=\$(readlink -f /var/lib/ceph/osd/ceph-${ID}/block || true)
+                if [ -n \"\$block_dev\" ] && [ -b \"\$block_dev\" ]; then
+                    ceph-bluestore-tool --dev \"\$block_dev\" set-label-key --key osd_key -v '${KEYRING_PATH}'
+                else
+                    echo 'Warning: Could not resolve raw block device for OSD.${ID}'
+            fi
+            "
+            fi
+
+            rm -f /tmp/ceph_rotated_key.tmp
             ssh -q "root@${host}" "chmod 600 '${KEYRING_PATH}' && chown ceph:ceph '${KEYRING_PATH}' 2>/dev/null || true"
         else
             ceph auth rotate --key-type=aes256k "${ENTITY}"
@@ -101,7 +114,7 @@ rotate_and_distribute() {
     local path="$2"
 
     echo "Rotating ${entity} to aes256k..."
-    
+
     if [ -f "$path" ]; then
         ceph auth rotate --key-type=aes256k "$entity" -o "$path"
         chmod 600 "$path"
