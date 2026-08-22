@@ -20,7 +20,7 @@ get_keyring_path() {
         osd)     echo "/var/lib/ceph/osd/ceph-${id}/keyring" ;;
         mgr)     echo "/var/lib/ceph/mgr/ceph-${id}/keyring" ;;
         mds)     echo "/var/lib/ceph/mds/ceph-${id}/keyring" ;;
-        radosgw) echo "/var/lib/ceph/radosgw/ceph-${id}/keyring" ;;
+        radosgw) echo "/var/lib/ceph/radosgw/ceph-rgw.${id}/keyring" ;;
         *)       echo "" ;;
     esac
 }
