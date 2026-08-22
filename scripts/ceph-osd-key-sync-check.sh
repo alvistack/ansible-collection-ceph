@@ -50,22 +50,18 @@ for osd_dir in /var/lib/ceph/osd/ceph-*; do
         if [[ "$AUTO_FIX" == "true" ]]; then
             echo "--> Repairing OSD.${osd_id} metadata on ${block_dev}..."
 
-            tmp_keyring=$(mktemp /tmp/osd_key_XXXXXX.keyring)
-            ceph auth get "osd.${osd_id}" -o "$tmp_keyring"
-
-            # 1. Update the live tmpfs file so it matches immediately
-            cp "$tmp_keyring" "${osd_dir}/keyring"
+            # 1. Write valid keyring structure to the active tmpfs mount
+            ceph auth get "osd.${osd_id}" -o "${osd_dir}/keyring"
             chown ceph:ceph "${osd_dir}/keyring"
             chmod 600 "${osd_dir}/keyring"
 
             # 2. Stop service before flashing device metadata
             systemctl stop "ceph-osd@${osd_id}.service" || true
 
-            # 3. Burn key directly to BlueStore device label
-            ceph-bluestore-tool --dev "$block_dev" set-label-key --key osd_key -v "$tmp_keyring"
+            # 3. Burn the raw key string directly to the BlueStore device label
+            ceph-bluestore-tool --dev "$block_dev" set-label-key --key osd_key -v "$mon_key"
 
-            # 4. Clean up and restart
-            rm -f "$tmp_keyring"
+            # 4. Restart service
             systemctl reset-failed "ceph-osd@${osd_id}.service" || true
             systemctl start "ceph-osd@${osd_id}.service"
 
