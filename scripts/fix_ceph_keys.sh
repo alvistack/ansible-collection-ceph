@@ -43,22 +43,33 @@ for host in "${CEPH_NODES[@]}"; do
     fi
 
     for unit in $units; do
-        daemon_str=$(echo "$unit" | sed -E 's/ceph-([^@]+)@([^.]+)\.service/\1 \2/')
-        TYPE=$(echo "$daemon_str" | awk '{print $1}')
-        ID=$(echo "$daemon_str" | awk '{print $2}')
+        # Handle systemd service names correctly for both standard services and ceph-radosgw
+        if [[ "$unit" =~ ceph-radosgw@([^.]+)\.service ]]; then
+            TYPE="radosgw"
+            ID="${BASH_REMATCH[1]}"
+            SYSTEMD_SERVICE="ceph-radosgw@${ID}"
+            # Maps client.rgw.<ID> for auth database commands
+            ENTITY="client.rgw.${ID}"
+            # Directly passes full daemon ID (e.g. rgw.tie7kohra7ch-2) to keyring helper
+            KEYRING_PATH=$(get_keyring_path "$TYPE" "$ID")
+        else
+            daemon_str=$(echo "$unit" | sed -E 's/ceph-([^@]+)@([^.]+)\.service/\1 \2/')
+            TYPE=$(echo "$daemon_str" | awk '{print $1}')
+            ID=$(echo "$daemon_str" | awk '{print $2}')
+            SYSTEMD_SERVICE="ceph-${TYPE}@${ID}"
+            ENTITY="${TYPE}.${ID}"
+            KEYRING_PATH=$(get_keyring_path "$TYPE" "$ID")
+        fi
 
-        # Skip MONs
+        # Skip MONs or malformed lines
         if [[ -z "$TYPE" || -z "$ID" || "$TYPE" == "mon" ]]; then
             continue
         fi
 
-        ENTITY=$([ "$TYPE" == "radosgw" ] && echo "client.rgw.${ID}" || echo "${TYPE}.${ID}")
-        KEYRING_PATH=$(get_keyring_path "$TYPE" "$ID")
-
         echo "Processing ${ENTITY} on ${host}..."
 
         # 1. Stop local service on node
-        ssh -q "root@${host}" "systemctl stop ceph-${TYPE}@${ID}" || true
+        ssh -q "root@${host}" "systemctl stop ${SYSTEMD_SERVICE}" || true
 
         # 2. Mark OSD down if applicable
         if [ "$TYPE" == "osd" ]; then
@@ -70,7 +81,7 @@ for host in "${CEPH_NODES[@]}"; do
             echo "Rotating ${ENTITY} to aes256k on ${host}:${KEYRING_PATH}..."
             ssh -q "root@${host}" "mkdir -p \$(dirname '${KEYRING_PATH}')"
             
-            # Temporary file on remote target ensures pipefail compatibility
+            # Temporary file on local controller ensures pipefail compatibility
             ceph auth rotate --key-type=aes256k "${ENTITY}" > /tmp/ceph_rotated_key.tmp
             scp -q /tmp/ceph_rotated_key.tmp "root@${host}:${KEYRING_PATH}"
             rm -f /tmp/ceph_rotated_key.tmp
@@ -81,7 +92,7 @@ for host in "${CEPH_NODES[@]}"; do
         fi
 
         # 4. Restart service on remote node
-        ssh -q "root@${host}" "systemctl start ceph-${TYPE}@${ID}"
+        ssh -q "root@${host}" "systemctl start ${SYSTEMD_SERVICE}"
         sleep 2
     done
 done
