@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-# Dynamically discover all unique hostnames from nested 'ceph node ls all' output
-mapfile -t CEPH_NODES < <(ceph node ls all 2>/dev/null | jq -r '.[][] | keys[]' | sort -u || ceph node ls 2>/dev/null | jq -r 'keys[]')
+# Dynamically discover all unique hostnames from object keys under each daemon type
+mapfile -t CEPH_NODES < <(
+    ceph node ls 2>/dev/null | jq -r '.[] | keys[]' 2>/dev/null | sort -u
+)
 
 if [ "${#CEPH_NODES[@]}" -eq 0 ]; then
     echo "Error: Failed to dynamically discover Ceph nodes." >&2

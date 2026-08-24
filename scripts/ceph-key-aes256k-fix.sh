@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-# Dynamic Discovery: Extract unique hostnames from nested 'ceph node ls all' output
-mapfile -t CEPH_NODES < <(ceph node ls all 2>/dev/null | jq -r '.[][] | keys[]' | sort -u || ceph node ls 2>/dev/null | jq -r 'keys[]')
+# Dynamic Discovery: Extract hostnames from object keys under each daemon type
+mapfile -t CEPH_NODES < <(
+    ceph node ls 2>/dev/null | jq -r '.[] | keys[]' 2>/dev/null | sort -u
+)
 
 if [ "${#CEPH_NODES[@]}" -eq 0 ]; then
     echo "Error: Failed to dynamically discover Ceph nodes."
@@ -175,7 +177,20 @@ ceph mon set auth_allowed_ciphers aes256k
 ceph config set mon auth_allow_insecure_global_id_reclaim false || true
 
 echo "================================================="
-echo " Migration Complete! Checking cluster health..."
+echo " MANUAL EXECUTION COMMANDS"
+echo " Please copy and run the following block manually:"
 echo "================================================="
-sleep 5
-ceph health detail
+echo ""
+echo "ceph auth rotate --key-type=aes256k mon."
+echo "ceph auth get mon. > /tmp/updated_mon.keyring"
+echo "ceph auth get client.admin >> /tmp/updated_mon.keyring"
+
+for node in "${CEPH_NODES[@]}"; do
+    echo "ssh root@${node} 'mkdir -p /var/lib/ceph/tmp'"
+    echo "scp /tmp/updated_mon.keyring root@${node}:/var/lib/ceph/tmp/ceph.mon.keyring"
+    echo "ssh root@${node} 'chmod 600 /var/lib/ceph/tmp/ceph.mon.keyring'"
+done
+
+echo "rm -f /tmp/updated_mon.keyring"
+echo ""
+echo "================================================="
