@@ -15,6 +15,7 @@ echo "Discovered cluster nodes: ${CEPH_NODES[*]}"
 
 # Temporarily ensure dual-cipher support on MONs
 ceph mon set auth_allowed_ciphers aes,aes256k
+ceph mon set auth_preferred_cipher aes256k
 
 for node in "${CEPH_NODES[@]}"; do
     # Discover RGW systemd service units installed/running on the remote node
@@ -26,32 +27,38 @@ for node in "${CEPH_NODES[@]}"; do
     fi
 
     for unit in $rgw_units; do
-        # Extract RGW daemon ID (e.g., extracts 'epdwr83n' from 'ceph-radosgw@rgw.epdwr83n.service')
         if [[ "$unit" =~ ceph-radosgw@(.*)\.service ]] || [[ "$unit" =~ ceph-rgw@(.*)\.service ]]; then
             RAW_ID="${BASH_REMATCH[1]}"
-            ID="${RAW_ID#rgw.}"
-            ENTITY="client.rgw.${ID}"
-            KEYRING_PATH="/var/lib/ceph/radosgw/ceph-rgw.${ID}/keyring"
+
+            # Map EXACT RAW_ID to path structure to avoid directory truncation
+            ENTITY="client.${RAW_ID}"
+            KEYRING_PATH="/var/lib/ceph/radosgw/ceph-${RAW_ID}/keyring"
 
             echo "=== Processing ${ENTITY} on ${node} (${unit}) ==="
 
             # 1. Stop local service
             ssh root@"${node}" "systemctl stop ${unit}" || true
 
-            # 2. Rotate key directly to a temporary file
-            if ! ceph auth rotate --key-type=aes256k "${ENTITY}" -o "/tmp/${ENTITY}.keyring"; then
+            # 2. Grant explicit RGW capability set (mon, osd, mgr)
+            ceph auth caps "${ENTITY}" mon 'allow rw' osd 'allow rwx' mgr 'allow rw' || true
+
+            # 3. Rotate key to aes256k and pull clean auth keyring format
+            if ! ceph auth rotate --key-type=aes256k "${ENTITY}"; then
                 echo "ERROR: Failed to rotate key for ${ENTITY} on ${node}." >&2
                 exit 1
             fi
 
-            # 3. Copy file to target node and set correct permissions
+            ceph auth get "${ENTITY}" -o "/tmp/${ENTITY}.keyring"
+
+            # 4. Copy file to target node and set correct permissions
             ssh root@"${node}" "mkdir -p \$(dirname '${KEYRING_PATH}')"
             scp -q "/tmp/${ENTITY}.keyring" "root@${node}:${KEYRING_PATH}"
-            ssh root@"${node}" "chmod 600 ${KEYRING_PATH} && chown ceph:ceph ${KEYRING_PATH} 2>/dev/null || true"
+            ssh root@"${node}" "chmod 600 '${KEYRING_PATH}' && chown -R ceph:ceph \$(dirname '${KEYRING_PATH}') 2>/dev/null || true"
 
             rm -f "/tmp/${ENTITY}.keyring"
 
-            # 4. Restart service
+            # 5. Clear systemd failed counter and start service
+            ssh root@"${node}" "systemctl reset-failed ${unit} || true"
             ssh root@"${node}" "systemctl start ${unit}"
         fi
     done

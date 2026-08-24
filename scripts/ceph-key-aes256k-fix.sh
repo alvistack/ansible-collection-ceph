@@ -56,11 +56,12 @@ for host in "${CEPH_NODES[@]}"; do
         if [[ "$unit" =~ ceph-radosgw@(.*)\.service ]] || [[ "$unit" =~ ceph-rgw@(.*)\.service ]]; then
             TYPE="radosgw"
             RAW_ID="${BASH_REMATCH[1]}"
-            # Normalize ID: strip leading 'rgw.' prefix if present to avoid double prefixes
-            ID="${RAW_ID#rgw.}"
             SYSTEMD_SERVICE="$unit"
-            ENTITY="client.rgw.${ID}"
-            KEYRING_PATH="/var/lib/ceph/radosgw/ceph-rgw.${ID}/keyring"
+
+            # Keep raw ID for directory structure and client ID for ceph auth entity
+            ID="${RAW_ID}"
+            ENTITY="client.${RAW_ID}"
+            KEYRING_PATH="/var/lib/ceph/radosgw/ceph-${RAW_ID}/keyring"
         else
             daemon_str=$(echo "$unit" | sed -E 's/ceph-([^@]+)@([^.]+)\.service/\1 \2/')
             TYPE=$(echo "$daemon_str" | awk '{print $1}')
@@ -87,15 +88,20 @@ for host in "${CEPH_NODES[@]}"; do
 
         # 3. Rotate key to aes256k and write output to remote keyring file
         if [ "$TYPE" == "radosgw" ]; then
-            # RGW-specific fixup logic
-            if ! ceph auth rotate --key-type=aes256k "${ENTITY}" -o "/tmp/${ENTITY}.keyring"; then
+            # Ensure RGW entity has explicit required caps before rotating
+            ceph auth caps "${ENTITY}" mon 'allow rw' osd 'allow rwx' mgr 'allow rw' || true
+
+            # Rotate key and retrieve full keyring format
+            if ! ceph auth rotate --key-type=aes256k "${ENTITY}"; then
                 echo "ERROR: Failed to rotate key for ${ENTITY} on ${host}." >&2
                 exit 1
             fi
 
+            ceph auth get "${ENTITY}" -o "/tmp/${ENTITY}.keyring"
+
             ssh -q "root@${host}" "mkdir -p \$(dirname '${KEYRING_PATH}')"
             scp -q "/tmp/${ENTITY}.keyring" "root@${host}:${KEYRING_PATH}"
-            ssh -q "root@${host}" "chmod 600 ${KEYRING_PATH} && chown ceph:ceph ${KEYRING_PATH} 2>/dev/null || true"
+            ssh -q "root@${host}" "chmod 600 ${KEYRING_PATH} && chown -R ceph:ceph \$(dirname '${KEYRING_PATH}') 2>/dev/null || true"
 
             rm -f "/tmp/${ENTITY}.keyring"
         elif [ -n "$KEYRING_PATH" ]; then
@@ -127,7 +133,8 @@ for host in "${CEPH_NODES[@]}"; do
             ceph auth rotate --key-type=aes256k "${ENTITY}"
         fi
 
-        # 4. Restart service on remote node
+        # 4. Clear failed systemd state and restart service on remote node
+        ssh -q "root@${host}" "systemctl reset-failed ${SYSTEMD_SERVICE} || true"
         ssh -q "root@${host}" "systemctl start ${SYSTEMD_SERVICE}"
         sleep 2
     done
