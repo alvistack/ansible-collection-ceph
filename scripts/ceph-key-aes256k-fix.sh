@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
+# Ceph Cluster Nodes
+readonly CEPH_NODES=("node22" "node23" "node24")
+
 if [ "$EUID" -ne 0 ]; then
     echo "Please run as root on ansible21."
     exit 1
@@ -22,25 +25,13 @@ get_keyring_path() {
     esac
 }
 
-# Dynamically discover all active cluster nodes directly from the Ceph monitors
-echo "=== Discovering Active Cluster Nodes ==="
-DISCOVERED_HOSTS=$(ceph node ls 2>/dev/null | grep -oP '"\K[^"]+' | sort -u || true)
-ALL_TARGET_NODES=($DISCOVERED_HOSTS)
-
-if [ ${#ALL_TARGET_NODES[@]} -eq 0 ]; then
-    echo "Error: Failed to discover any active nodes from 'ceph node ls'."
-    exit 1
-fi
-
-echo "Discovered ${#ALL_TARGET_NODES[@]} target nodes: ${ALL_TARGET_NODES[*]}"
-
 echo "=== Phase 1: Enabling Dual Cipher Mode (aes, aes256k) ==="
 ceph mon set auth_allowed_ciphers aes,aes256k
 ceph mon set auth_preferred_cipher aes256k
 
 echo "=== Phase 2: Rotating Service Daemon Keys Across Nodes ==="
 
-for host in "${ALL_TARGET_NODES[@]}"; do
+for host in "${CEPH_NODES[@]}"; do
     echo "Scanning active Ceph daemons on host: ${host}"
 
     # Discover running Ceph units remotely
@@ -52,10 +43,11 @@ for host in "${ALL_TARGET_NODES[@]}"; do
     fi
 
     for unit in $units; do
-        # Handles radosgw and standard units
+        # Robust parsing for systemd daemon units
         if [[ "$unit" =~ ceph-radosgw@(.*)\.service ]] || [[ "$unit" =~ ceph-rgw@(.*)\.service ]]; then
             TYPE="radosgw"
             RAW_ID="${BASH_REMATCH[1]}"
+            # Normalize ID: strip leading 'rgw.' prefix if present to avoid double prefixes
             ID="${RAW_ID#rgw.}"
             SYSTEMD_SERVICE="$unit"
             ENTITY="client.rgw.${ID}"
@@ -89,10 +81,7 @@ for host in "${ALL_TARGET_NODES[@]}"; do
             echo "Rotating ${ENTITY} to aes256k on ${host}:${KEYRING_PATH}..."
             ssh -q "root@${host}" "mkdir -p \$(dirname '${KEYRING_PATH}')"
 
-            # Rotate and write updated key to temp keyring file
-            ceph auth rotate --key-type=aes256k "${ENTITY}" -o /tmp/ceph_rotated_key.tmp
-            ceph auth import -i /tmp/ceph_rotated_key.tmp
-
+            ceph auth rotate --key-type=aes256k "${ENTITY}" > /tmp/ceph_rotated_key.tmp
             scp -q /tmp/ceph_rotated_key.tmp "root@${host}:${KEYRING_PATH}"
 
             # Extract raw secret string from generated keyring for BlueStore fixup
@@ -107,8 +96,8 @@ for host in "${ALL_TARGET_NODES[@]}"; do
                     ceph-bluestore-tool --dev \"\$block_dev\" set-label-key --key osd_key -v '${RAW_SECRET}'
                 else
                     echo 'Warning: Could not resolve raw block device for OSD.${ID}'
-                fi
-                "
+            fi
+            "
             fi
 
             rm -f /tmp/ceph_rotated_key.tmp
@@ -131,20 +120,20 @@ rotate_and_distribute() {
 
     echo "Rotating ${entity} to aes256k..."
 
-    ceph auth rotate --key-type=aes256k "$entity" -o /tmp/temp_keyring
-    ceph auth import -i /tmp/temp_keyring
-
     if [ -f "$path" ]; then
-        cp /tmp/temp_keyring "$path"
+        ceph auth rotate --key-type=aes256k "$entity" -o "$path"
         chmod 600 "$path"
+    else
+        ceph auth rotate --key-type=aes256k "$entity" > /tmp/temp_keyring
+        path="/tmp/temp_keyring"
     fi
 
     # Distribute to all target cluster nodes
-    for node in "${ALL_TARGET_NODES[@]}"; do
-        echo "Syncing ${entity} keyring -> ${node}:${path}..."
-        ssh -q "root@${node}" "mkdir -p \$(dirname '${path}')"
-        scp -q /tmp/temp_keyring "root@${node}:${path}"
-        ssh -q "root@${node}" "chmod 600 '${path}'"
+    for node in "${CEPH_NODES[@]}"; do
+        echo "Syncing ${entity} keyring -> ${node}:${2}..."
+        ssh -q "root@${node}" "mkdir -p \$(dirname '${2}')"
+        scp -q "$path" "root@${node}:${2}"
+        ssh -q "root@${node}" "chmod 600 '${2}'"
     done
 
     rm -f /tmp/temp_keyring
