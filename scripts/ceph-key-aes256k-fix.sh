@@ -75,8 +75,8 @@ for host in "${CEPH_NODES[@]}"; do
             KEYRING_PATH=$(get_keyring_path "$TYPE" "$ID")
         fi
 
-        # Skip MONs or malformed lines
-        if [[ -z "$TYPE" || "$TYPE" == "mon" ]]; then
+        # Skip non-auth daemons, transient setup services, and MONs
+        if [[ -z "$TYPE" || "$TYPE" == "mon" || "$TYPE" == "volume" || "$TYPE" == "crash" ]]; then
             continue
         fi
 
