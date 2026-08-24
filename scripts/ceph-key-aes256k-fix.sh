@@ -85,7 +85,19 @@ for host in "${CEPH_NODES[@]}"; do
         fi
 
         # 3. Rotate key to aes256k and write output to remote keyring file
-        if [ -n "$KEYRING_PATH" ]; then
+        if [ "$TYPE" == "radosgw" ]; then
+            # RGW-specific fixup logic
+            if ! ceph auth rotate --key-type=aes256k "${ENTITY}" -o "/tmp/${ENTITY}.keyring"; then
+                echo "ERROR: Failed to rotate key for ${ENTITY} on ${host}." >&2
+                exit 1
+            fi
+
+            ssh -q "root@${host}" "mkdir -p \$(dirname '${KEYRING_PATH}')"
+            scp -q "/tmp/${ENTITY}.keyring" "root@${host}:${KEYRING_PATH}"
+            ssh -q "root@${host}" "chmod 600 ${KEYRING_PATH} && chown ceph:ceph ${KEYRING_PATH} 2>/dev/null || true"
+
+            rm -f "/tmp/${ENTITY}.keyring"
+        elif [ -n "$KEYRING_PATH" ]; then
             echo "Rotating ${ENTITY} to aes256k on ${host}:${KEYRING_PATH}..."
             ssh -q "root@${host}" "mkdir -p \$(dirname '${KEYRING_PATH}')"
 
