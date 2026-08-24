@@ -10,8 +10,8 @@ AUTO_FIX="true"
 
 echo "=== Ceph BlueStore Key Drift Audit & Repair ==="
 
-# Dynamically discover all cluster nodes
-mapfile -t CEPH_NODES < <(ceph node ls all 2>/dev/null | jq -r 'keys[]' || ceph node ls 2>/dev/null | jq -r 'keys[]')
+# Dynamically discover all cluster hostnames from nested 'ceph node ls all' output
+mapfile -t CEPH_NODES < <(ceph node ls all 2>/dev/null | jq -r '.[][] | keys[]' | sort -u || ceph node ls 2>/dev/null | jq -r 'keys[]')
 
 if [ "${#CEPH_NODES[@]}" -eq 0 ]; then
     echo "Error: Failed to dynamically discover Ceph nodes." >&2
