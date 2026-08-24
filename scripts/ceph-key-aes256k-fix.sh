@@ -176,6 +176,8 @@ echo "=== Phase 5: Cluster Lockdown ==="
 ceph mon set auth_allowed_ciphers aes256k
 ceph config set mon auth_allow_insecure_global_id_reclaim false || true
 
+set -e
+
 echo "================================================="
 echo " MANUAL EXECUTION COMMANDS"
 echo " Please copy and run the following block manually:"
