@@ -43,8 +43,8 @@ echo "=== Phase 2: Rotating Service Daemon Keys Across Nodes ==="
 for host in "${CEPH_NODES[@]}"; do
     echo "Scanning active Ceph daemons on host: ${host}"
 
-    # Discover Ceph systemd unit files reliably without status symbols
-    units=$(ssh -q "root@${host}" "systemctl list-unit-files 'ceph-*@*.service' --no-legend | awk '{print \$1}'" || true)
+    # Discover instantiated systemd units only, stripping empty base templates (@.service)
+    units=$(ssh -q "root@${host}" "systemctl list-units 'ceph-*@*.service' --all --no-legend --plain | awk '{print \$1}' | grep -v '@\.service$' | grep -E '\.service$' || true")
 
     if [ -z "$units" ]; then
         echo "No active daemons found on ${host}."
@@ -58,9 +58,13 @@ for host in "${CEPH_NODES[@]}"; do
             RAW_ID="${BASH_REMATCH[1]}"
             SYSTEMD_SERVICE="$unit"
 
-            # Keep raw ID for directory structure and client ID for ceph auth entity
-            ID="${RAW_ID}"
-            ENTITY="client.${RAW_ID}"
+            # Normalize RGW Entity string to handle both rgw.host and host naming formats
+            if [[ "$RAW_ID" =~ ^rgw\.(.*) ]]; then
+                ENTITY="client.rgw.${BASH_REMATCH[1]}"
+            else
+                ENTITY="client.${RAW_ID}"
+            fi
+
             KEYRING_PATH="/var/lib/ceph/radosgw/ceph-${RAW_ID}/keyring"
         else
             daemon_str=$(echo "$unit" | sed -E 's/ceph-([^@]+)@([^.]+)\.service/\1 \2/')

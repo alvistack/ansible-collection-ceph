@@ -18,11 +18,11 @@ ceph mon set auth_allowed_ciphers aes,aes256k
 ceph mon set auth_preferred_cipher aes256k
 
 for node in "${CEPH_NODES[@]}"; do
-    # Discover RGW systemd service unit files reliably without systemd status symbols
-    rgw_units=$(ssh -q "root@${node}" "systemctl list-unit-files 'ceph-radosgw@*.service' 'ceph-rgw@*.service' --no-legend | awk '{print \$1}'" || true)
+    # Discover instantiated RGW units only, stripping empty base templates (@.service)
+    rgw_units=$(ssh -q "root@${node}" "systemctl list-units 'ceph-radosgw@*' 'ceph-rgw@*' --all --no-legend --plain | awk '{print \$1}' | grep -v '@\.service$' | grep -E '\.service$' || true")
 
     if [ -z "$rgw_units" ]; then
-        echo "No RGW service found on ${node}, skipping..."
+        echo "No instantiated RGW service found on ${node}, skipping..."
         continue
     fi
 
@@ -30,8 +30,13 @@ for node in "${CEPH_NODES[@]}"; do
         if [[ "$unit" =~ ceph-radosgw@(.*)\.service ]] || [[ "$unit" =~ ceph-rgw@(.*)\.service ]]; then
             RAW_ID="${BASH_REMATCH[1]}"
 
-            # Map EXACT RAW_ID to path structure to avoid directory truncation
-            ENTITY="client.${RAW_ID}"
+            # Handle both 'rgw.hostname' and 'hostname' ID naming structures
+            if [[ "$RAW_ID" =~ ^rgw\.(.*) ]]; then
+                ENTITY="client.rgw.${BASH_REMATCH[1]}"
+            else
+                ENTITY="client.${RAW_ID}"
+            fi
+
             KEYRING_PATH="/var/lib/ceph/radosgw/ceph-${RAW_ID}/keyring"
 
             echo "=== Processing ${ENTITY} on ${node} (${unit}) ==="
