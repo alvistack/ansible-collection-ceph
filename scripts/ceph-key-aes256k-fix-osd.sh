@@ -1,71 +1,96 @@
 #!/usr/bin/env bash
 #
 # ceph-osd-key-sync-check.sh
-# Audits and automatically repairs out-of-sync BlueStore OSD device keys.
+# Automated remote OSD key migration & BlueStore label repair from Ansible controller.
 #
 
 set -euo pipefail
 
-# Enabled AUTO_FIX to automatically apply set-label-key repairs
 AUTO_FIX="true"
 
 echo "=== Ceph BlueStore Key Drift Audit & Repair ==="
 
-for osd_dir in /var/lib/ceph/osd/ceph-*; do
-    [[ -d "$osd_dir" ]] || continue
+# Dynamically discover all cluster nodes
+mapfile -t CEPH_NODES < <(ceph node ls all 2>/dev/null | jq -r 'keys[]' || ceph node ls 2>/dev/null | jq -r 'keys[]')
 
-    osd_id=$(basename "$osd_dir" | cut -d'-' -f2)
-    block_dev=$(readlink -f "${osd_dir}/block" 2>/dev/null || true)
+if [ "${#CEPH_NODES[@]}" -eq 0 ]; then
+    echo "Error: Failed to dynamically discover Ceph nodes." >&2
+    exit 1
+fi
 
-    if [[ -z "$block_dev" || ! -b "$block_dev" ]]; then
-        echo "[!] OSD.${osd_id}: Cannot resolve underlying block device for ${osd_dir}."
+echo "Discovered cluster nodes: ${CEPH_NODES[*]}"
+
+# Ensure dual-cipher support on MONs before key rotation
+ceph mon set auth_allowed_ciphers aes,aes256k 2>/dev/null || true
+
+for node in "${CEPH_NODES[@]}"; do
+    echo "========================================"
+    echo "Scanning active OSD daemons on node: ${node}"
+    echo "========================================"
+
+    # Discover active OSD service units on the remote node
+    osd_units=$(ssh -q "root@${node}" "systemctl list-units 'ceph-osd@*.service' --state=running --no-legend | awk '{print \$1}'" || true)
+
+    if [ -z "$osd_units" ]; then
+        echo "No active OSD services found on ${node}, skipping..."
         continue
     fi
 
-    # Get active key from Ceph MON auth
-    mon_key=$(ceph auth get-key "osd.${osd_id}" 2>/dev/null || true)
+    for unit in $osd_units; do
+        if [[ "$unit" =~ ceph-osd@(.*)\.service ]]; then
+            osd_id="${BASH_REMATCH[1]}"
+            osd_dir="/var/lib/ceph/osd/ceph-${osd_id}"
+            entity="osd.${osd_id}"
 
-    if [[ -z "$mon_key" ]]; then
-        echo "[!] OSD.${osd_id}: Failed to fetch key from MON cluster."
-        continue
-    fi
+            # Resolve remote block device path
+            block_dev=$(ssh -q "root@${node}" "readlink -f '${osd_dir}/block' 2>/dev/null" || true)
 
-    # Get key from local tmpfs keyring
-    local_key=""
-    if [[ -f "${osd_dir}/keyring" ]]; then
-        local_key=$(awk -F'= ' '/key =/ {print $2}' "${osd_dir}/keyring" | tr -d ' \r\n')
-    fi
+            if [[ -z "$block_dev" ]]; then
+                echo "[!] OSD.${osd_id} on ${node}: Cannot resolve underlying block device for ${osd_dir}."
+                continue
+            fi
 
-    echo "----------------------------------------"
-    echo "OSD ID:       ${osd_id}"
-    echo "Block Dev:    ${block_dev}"
-    echo "MON Key:      ${mon_key}"
-    echo "Local Key:    ${local_key:-<MISSING>}"
+            echo "----------------------------------------"
+            echo "Node:         ${node}"
+            echo "OSD ID:       ${osd_id}"
+            echo "Block Dev:    ${block_dev}"
 
-    if [[ "$mon_key" == "$local_key" ]]; then
-        echo "Status:       [ OK ] Keyring is synchronized."
-    else
-        echo "Status:       [ MISMATCH ] Key on disk does not match MON cluster key!"
+            # Step 1: Rotate MON key from aes to aes256k
+            echo "--> Rotating MON key for ${entity} to aes256k..."
+            if ! ceph auth rotate --key-type=aes256k "${entity}" -o "/tmp/${entity}.keyring"; then
+                echo "ERROR: Failed to rotate key for ${entity} in MON cluster." >&2
+                exit 1
+            fi
 
-        if [[ "$AUTO_FIX" == "true" ]]; then
-            echo "--> Repairing OSD.${osd_id} metadata on ${block_dev}..."
+            mon_key=$(awk -F'= ' '/key =/ {print $2}' "/tmp/${entity}.keyring" | tr -d ' \r\n')
+            echo "Rotated Key:  ${mon_key}"
 
-            # 1. Write valid keyring structure to the active tmpfs mount
-            ceph auth get "osd.${osd_id}" -o "${osd_dir}/keyring"
-            chown ceph:ceph "${osd_dir}/keyring"
-            chmod 600 "${osd_dir}/keyring"
+            if [[ "$AUTO_FIX" == "true" ]]; then
+                echo "--> Repairing OSD.${osd_id} metadata on ${node}:${block_dev}..."
 
-            # 2. Stop service before flashing device metadata
-            systemctl stop "ceph-osd@${osd_id}.service" || true
+                # Step 2: Stop remote service before flashing device metadata
+                ssh -q "root@${node}" "systemctl stop 'ceph-osd@${osd_id}.service'" || true
 
-            # 3. Burn the raw key string directly to the BlueStore device label
-            ceph-bluestore-tool --dev "$block_dev" set-label-key --key osd_key -v "$mon_key"
+                # Step 3: Copy new aes256k keyring to target node
+                ssh -q "root@${node}" "mkdir -p '${osd_dir}'"
+                scp -q "/tmp/${entity}.keyring" "root@${node}:${osd_dir}/keyring"
+                ssh -q "root@${node}" "chmod 600 '${osd_dir}/keyring' && chown ceph:ceph '${osd_dir}/keyring' 2>/dev/null || true"
 
-            # 4. Restart service
-            systemctl reset-failed "ceph-osd@${osd_id}.service" || true
-            systemctl start "ceph-osd@${osd_id}.service"
+                # Step 4: Burn raw secret string directly into BlueStore label
+                ssh -q "root@${node}" "ceph-bluestore-tool --dev '${block_dev}' set-label-key --key osd_key -v '${mon_key}'"
 
-            echo "--> Repair complete and service restarted for OSD.${osd_id}."
+                # Step 5: Restart service
+                ssh -q "root@${node}" "systemctl reset-failed 'ceph-osd@${osd_id}.service' || true"
+                ssh -q "root@${node}" "systemctl start 'ceph-osd@${osd_id}.service'"
+
+                echo "--> Key rotation and BlueStore label repair complete for OSD.${osd_id} on ${node}."
+            fi
+
+            rm -f "/tmp/${entity}.keyring"
         fi
-    fi
+    done
 done
+
+echo "========================================"
+echo "=== All OSD Keys Rotated & Synchronized ==="
+echo "========================================"
