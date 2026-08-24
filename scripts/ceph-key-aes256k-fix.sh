@@ -43,13 +43,15 @@ for host in "${CEPH_NODES[@]}"; do
     fi
 
     for unit in $units; do
-        # Handles radosgw and standard units
-        if [[ "$unit" =~ ceph-radosgw@rgw\.(.+)\.service ]] || [[ "$unit" =~ ceph-radosgw@(.+)\.service ]] || [[ "$unit" =~ ceph-rgw@(.+)\.service ]]; then
+        # Robust parsing for systemd daemon units
+        if [[ "$unit" =~ ceph-radosgw@(.*)\.service ]] || [[ "$unit" =~ ceph-rgw@(.*)\.service ]]; then
             TYPE="radosgw"
-            NODE_NAME="${BASH_REMATCH[1]}"
+            RAW_ID="${BASH_REMATCH[1]}"
+            # Normalize ID: strip leading 'rgw.' prefix if present to avoid double prefixes
+            ID="${RAW_ID#rgw.}"
             SYSTEMD_SERVICE="$unit"
-            ENTITY="client.rgw.${NODE_NAME}"
-            KEYRING_PATH="/var/lib/ceph/radosgw/ceph-rgw.${NODE_NAME}/keyring"
+            ENTITY="client.rgw.${ID}"
+            KEYRING_PATH="/var/lib/ceph/radosgw/ceph-rgw.${ID}/keyring"
         else
             daemon_str=$(echo "$unit" | sed -E 's/ceph-([^@]+)@([^.]+)\.service/\1 \2/')
             TYPE=$(echo "$daemon_str" | awk '{print $1}')
