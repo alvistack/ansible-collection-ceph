@@ -18,8 +18,8 @@ ceph mon set auth_allowed_ciphers aes,aes256k
 ceph mon set auth_preferred_cipher aes256k
 
 for node in "${CEPH_NODES[@]}"; do
-    # Discover RGW systemd service units installed/running on the remote node
-    rgw_units=$(ssh -q "root@${node}" "systemctl list-units 'ceph-radosgw@*' 'ceph-rgw@*' --all --no-legend | awk '{print \$1}'" || true)
+    # Discover RGW systemd service unit files reliably without systemd status symbols
+    rgw_units=$(ssh -q "root@${node}" "systemctl list-unit-files 'ceph-radosgw@*.service' 'ceph-rgw@*.service' --no-legend | awk '{print \$1}'" || true)
 
     if [ -z "$rgw_units" ]; then
         echo "No RGW service found on ${node}, skipping..."

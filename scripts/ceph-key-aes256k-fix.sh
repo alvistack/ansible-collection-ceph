@@ -43,8 +43,8 @@ echo "=== Phase 2: Rotating Service Daemon Keys Across Nodes ==="
 for host in "${CEPH_NODES[@]}"; do
     echo "Scanning active Ceph daemons on host: ${host}"
 
-    # Discover running Ceph units remotely
-    units=$(ssh -q "root@${host}" "systemctl list-units 'ceph-*@*.service' --state=running --no-legend | awk '{print \$1}'" || true)
+    # Discover Ceph systemd unit files reliably without status symbols
+    units=$(ssh -q "root@${host}" "systemctl list-unit-files 'ceph-*@*.service' --no-legend | awk '{print \$1}'" || true)
 
     if [ -z "$units" ]; then
         echo "No active daemons found on ${host}."
@@ -101,7 +101,7 @@ for host in "${CEPH_NODES[@]}"; do
 
             ssh -q "root@${host}" "mkdir -p \$(dirname '${KEYRING_PATH}')"
             scp -q "/tmp/${ENTITY}.keyring" "root@${host}:${KEYRING_PATH}"
-            ssh -q "root@${host}" "chmod 600 ${KEYRING_PATH} && chown -R ceph:ceph \$(dirname '${KEYRING_PATH}') 2>/dev/null || true"
+            ssh -q "root@${host}" "chmod 600 '${KEYRING_PATH}' && chown -R ceph:ceph \$(dirname '${KEYRING_PATH}') 2>/dev/null || true"
 
             rm -f "/tmp/${ENTITY}.keyring"
         elif [ -n "$KEYRING_PATH" ]; then
