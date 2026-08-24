@@ -82,13 +82,16 @@ for host in "${CEPH_NODES[@]}"; do
             ceph auth rotate --key-type=aes256k "${ENTITY}" > /tmp/ceph_rotated_key.tmp
             scp -q /tmp/ceph_rotated_key.tmp "root@${host}:${KEYRING_PATH}"
 
+            # Extract raw secret string from generated keyring for BlueStore fixup
+            RAW_SECRET=$(awk -F'= ' '/key =/ {print $2}' /tmp/ceph_rotated_key.tmp | tr -d ' \r\n')
+
             # If daemon is an OSD, write updated key into raw BlueStore block metadata
             if [ "$TYPE" == "osd" ]; then
                 echo "Writing updated osd_key label to raw BlueStore device on ${host} for OSD.${ID}..."
                 ssh -q "root@${host}" "
                 block_dev=\$(readlink -f /var/lib/ceph/osd/ceph-${ID}/block || true)
                 if [ -n \"\$block_dev\" ] && [ -b \"\$block_dev\" ]; then
-                    ceph-bluestore-tool --dev \"\$block_dev\" set-label-key --key osd_key -v '${KEYRING_PATH}'
+                    ceph-bluestore-tool --dev \"\$block_dev\" set-label-key --key osd_key -v '${RAW_SECRET}'
                 else
                     echo 'Warning: Could not resolve raw block device for OSD.${ID}'
             fi
