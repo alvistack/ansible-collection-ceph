@@ -1,8 +1,16 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-# Ceph Cluster Nodes
-readonly CEPH_NODES=("node22" "node23" "node24")
+# Dynamic Discovery: Query active nodes from Ceph orchestrator/CRUSH map
+# Uses 'ceph node ls' to extract all host names via jq
+mapfile -t CEPH_NODES < <(ceph node ls status 2>/dev/null | jq -r '.nodes | keys[]' || ceph node ls 2>/dev/null | jq -r 'keys[]')
+
+if [ "${#CEPH_NODES[@]}" -eq 0 ]; then
+    echo "Error: Failed to dynamically discover Ceph nodes."
+    exit 1
+fi
+
+echo "Discovered nodes: ${CEPH_NODES[*]}"
 
 if [ "$EUID" -ne 0 ]; then
     echo "Please run as root on ansible21."
