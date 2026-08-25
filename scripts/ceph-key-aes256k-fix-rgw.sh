@@ -30,11 +30,18 @@ for node in "${CEPH_NODES[@]}"; do
         if [[ "$unit" =~ ceph-radosgw@(.*)\.service ]] || [[ "$unit" =~ ceph-rgw@(.*)\.service ]]; then
             RAW_ID="${BASH_REMATCH[1]}"
 
-            # Handle both 'rgw.hostname' and 'hostname' ID naming structures
-            if [[ "$RAW_ID" =~ ^rgw\.(.*) ]]; then
-                ENTITY="client.rgw.${BASH_REMATCH[1]}"
-            else
+            # Strip leading 'rgw.' or 'rgw-' to isolate the node name
+            NODE_NAME=$(echo "$RAW_ID" | sed -E 's/^rgw[\.-]//')
+
+            # Verify candidate entity names against Ceph auth registry
+            if ceph auth get "client.rgw.${NODE_NAME}" &>/dev/null; then
+                ENTITY="client.rgw.${NODE_NAME}"
+            elif ceph auth get "client.rgw-${NODE_NAME}" &>/dev/null; then
+                ENTITY="client.rgw-${NODE_NAME}"
+            elif ceph auth get "client.${RAW_ID}" &>/dev/null; then
                 ENTITY="client.${RAW_ID}"
+            else
+                ENTITY="client.rgw.${NODE_NAME}"
             fi
 
             KEYRING_PATH="/var/lib/ceph/radosgw/ceph-${RAW_ID}/keyring"

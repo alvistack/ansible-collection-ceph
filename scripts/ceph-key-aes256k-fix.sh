@@ -29,7 +29,7 @@ get_keyring_path() {
         osd)     echo "/var/lib/ceph/osd/ceph-${id}/keyring" ;;
         mgr)     echo "/var/lib/ceph/mgr/ceph-${id}/keyring" ;;
         mds)     echo "/var/lib/ceph/mds/ceph-${id}/keyring" ;;
-        radosgw) echo "/var/lib/ceph/radosgw/ceph-rgw.${id}/keyring" ;;
+        radosgw) echo "/var/lib/ceph/radosgw/ceph-${id}/keyring" ;;
         *)       echo "" ;;
     esac
 }
@@ -58,11 +58,18 @@ for host in "${CEPH_NODES[@]}"; do
             RAW_ID="${BASH_REMATCH[1]}"
             SYSTEMD_SERVICE="$unit"
 
-            # Normalize RGW Entity string to handle both rgw.host and host naming formats
-            if [[ "$RAW_ID" =~ ^rgw\.(.*) ]]; then
-                ENTITY="client.rgw.${BASH_REMATCH[1]}"
-            else
+            # Strip leading 'rgw.' or 'rgw-' to isolate node identifier
+            NODE_NAME=$(echo "$RAW_ID" | sed -E 's/^rgw[\.-]//')
+
+            # Try candidate entity names against Ceph auth registry
+            if ceph auth get "client.rgw.${NODE_NAME}" &>/dev/null; then
+                ENTITY="client.rgw.${NODE_NAME}"
+            elif ceph auth get "client.rgw-${NODE_NAME}" &>/dev/null; then
+                ENTITY="client.rgw-${NODE_NAME}"
+            elif ceph auth get "client.${RAW_ID}" &>/dev/null; then
                 ENTITY="client.${RAW_ID}"
+            else
+                ENTITY="client.rgw.${NODE_NAME}"
             fi
 
             KEYRING_PATH="/var/lib/ceph/radosgw/ceph-${RAW_ID}/keyring"
