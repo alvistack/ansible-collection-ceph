@@ -82,7 +82,8 @@ for host in "${CEPH_NODES[@]}"; do
 
         echo "Processing ${ENTITY} (${SYSTEMD_SERVICE}) on ${host}..."
 
-        # 1. Stop local service on node
+        # 1. Clear failed state and stop local service on node
+        ssh -q "root@${host}" "systemctl reset-failed ${SYSTEMD_SERVICE} || true"
         ssh -q "root@${host}" "systemctl stop ${SYSTEMD_SERVICE}" || true
 
         # 2. Mark OSD down if applicable
