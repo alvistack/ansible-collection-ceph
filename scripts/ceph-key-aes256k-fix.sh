@@ -1,8 +1,17 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-# Ceph Cluster Nodes
-readonly CEPH_NODES=("node22" "node23" "node24")
+# Dynamic Discovery: Extract hostnames from object keys under each daemon type
+mapfile -t CEPH_NODES < <(
+    ceph node ls 2>/dev/null | jq -r '.[] | keys[]' 2>/dev/null | sort -u
+)
+
+if [ "${#CEPH_NODES[@]}" -eq 0 ]; then
+    echo "Error: Failed to dynamically discover Ceph nodes."
+    exit 1
+fi
+
+echo "Discovered nodes: ${CEPH_NODES[*]}"
 
 if [ "$EUID" -ne 0 ]; then
     echo "Please run as root on ansible21."
@@ -20,7 +29,7 @@ get_keyring_path() {
         osd)     echo "/var/lib/ceph/osd/ceph-${id}/keyring" ;;
         mgr)     echo "/var/lib/ceph/mgr/ceph-${id}/keyring" ;;
         mds)     echo "/var/lib/ceph/mds/ceph-${id}/keyring" ;;
-        radosgw) echo "/var/lib/ceph/radosgw/ceph-rgw.${id}/keyring" ;;
+        radosgw) echo "/var/lib/ceph/radosgw/ceph-${id}/keyring" ;;
         *)       echo "" ;;
     esac
 }
@@ -34,8 +43,8 @@ echo "=== Phase 2: Rotating Service Daemon Keys Across Nodes ==="
 for host in "${CEPH_NODES[@]}"; do
     echo "Scanning active Ceph daemons on host: ${host}"
 
-    # Discover running Ceph units remotely
-    units=$(ssh -q "root@${host}" "systemctl list-units 'ceph-*@*.service' --state=running --no-legend | awk '{print \$1}'" || true)
+    # Discover instantiated systemd units only, stripping empty base templates (@.service)
+    units=$(ssh -q "root@${host}" "systemctl list-units 'ceph-*@*.service' --all --no-legend --plain | awk '{print \$1}' | grep -v '@\.service$' | grep -E '\.service$' || true")
 
     if [ -z "$units" ]; then
         echo "No active daemons found on ${host}."
@@ -43,13 +52,27 @@ for host in "${CEPH_NODES[@]}"; do
     fi
 
     for unit in $units; do
-        # Handles radosgw and standard units
-        if [[ "$unit" =~ ceph-radosgw@rgw\.(.+)\.service ]] || [[ "$unit" =~ ceph-radosgw@(.+)\.service ]] || [[ "$unit" =~ ceph-rgw@(.+)\.service ]]; then
+        # Robust parsing for systemd daemon units
+        if [[ "$unit" =~ ceph-radosgw@(.*)\.service ]] || [[ "$unit" =~ ceph-rgw@(.*)\.service ]]; then
             TYPE="radosgw"
-            NODE_NAME="${BASH_REMATCH[1]}"
+            RAW_ID="${BASH_REMATCH[1]}"
             SYSTEMD_SERVICE="$unit"
-            ENTITY="client.rgw.${NODE_NAME}"
-            KEYRING_PATH="/var/lib/ceph/radosgw/ceph-rgw.${NODE_NAME}/keyring"
+
+            # Strip leading 'rgw.' or 'rgw-' to isolate node identifier
+            NODE_NAME=$(echo "$RAW_ID" | sed -E 's/^rgw[\.-]//')
+
+            # Try candidate entity names against Ceph auth registry
+            if ceph auth get "client.rgw.${NODE_NAME}" &>/dev/null; then
+                ENTITY="client.rgw.${NODE_NAME}"
+            elif ceph auth get "client.rgw-${NODE_NAME}" &>/dev/null; then
+                ENTITY="client.rgw-${NODE_NAME}"
+            elif ceph auth get "client.${RAW_ID}" &>/dev/null; then
+                ENTITY="client.${RAW_ID}"
+            else
+                ENTITY="client.rgw.${NODE_NAME}"
+            fi
+
+            KEYRING_PATH="/var/lib/ceph/radosgw/ceph-${RAW_ID}/keyring"
         else
             daemon_str=$(echo "$unit" | sed -E 's/ceph-([^@]+)@([^.]+)\.service/\1 \2/')
             TYPE=$(echo "$daemon_str" | awk '{print $1}')
@@ -59,14 +82,15 @@ for host in "${CEPH_NODES[@]}"; do
             KEYRING_PATH=$(get_keyring_path "$TYPE" "$ID")
         fi
 
-        # Skip MONs or malformed lines
-        if [[ -z "$TYPE" || "$TYPE" == "mon" ]]; then
+        # Skip non-auth daemons, transient setup services, and MONs
+        if [[ -z "$TYPE" || "$TYPE" == "mon" || "$TYPE" == "volume" || "$TYPE" == "crash" ]]; then
             continue
         fi
 
         echo "Processing ${ENTITY} (${SYSTEMD_SERVICE}) on ${host}..."
 
-        # 1. Stop local service on node
+        # 1. Clear failed state and stop local service on node
+        ssh -q "root@${host}" "systemctl reset-failed ${SYSTEMD_SERVICE} || true"
         ssh -q "root@${host}" "systemctl stop ${SYSTEMD_SERVICE}" || true
 
         # 2. Mark OSD down if applicable
@@ -75,7 +99,24 @@ for host in "${CEPH_NODES[@]}"; do
         fi
 
         # 3. Rotate key to aes256k and write output to remote keyring file
-        if [ -n "$KEYRING_PATH" ]; then
+        if [ "$TYPE" == "radosgw" ]; then
+            # Ensure RGW entity has explicit required caps before rotating
+            ceph auth caps "${ENTITY}" mon 'allow rw' osd 'allow rwx' mgr 'allow rw' || true
+
+            # Rotate key and retrieve full keyring format
+            if ! ceph auth rotate --key-type=aes256k "${ENTITY}"; then
+                echo "ERROR: Failed to rotate key for ${ENTITY} on ${host}." >&2
+                exit 1
+            fi
+
+            ceph auth get "${ENTITY}" -o "/tmp/${ENTITY}.keyring"
+
+            ssh -q "root@${host}" "mkdir -p \$(dirname '${KEYRING_PATH}')"
+            scp -q "/tmp/${ENTITY}.keyring" "root@${host}:${KEYRING_PATH}"
+            ssh -q "root@${host}" "chmod 600 '${KEYRING_PATH}' && chown -R ceph:ceph \$(dirname '${KEYRING_PATH}') 2>/dev/null || true"
+
+            rm -f "/tmp/${ENTITY}.keyring"
+        elif [ -n "$KEYRING_PATH" ]; then
             echo "Rotating ${ENTITY} to aes256k on ${host}:${KEYRING_PATH}..."
             ssh -q "root@${host}" "mkdir -p \$(dirname '${KEYRING_PATH}')"
 
@@ -104,7 +145,8 @@ for host in "${CEPH_NODES[@]}"; do
             ceph auth rotate --key-type=aes256k "${ENTITY}"
         fi
 
-        # 4. Restart service on remote node
+        # 4. Clear failed systemd state and restart service on remote node
+        ssh -q "root@${host}" "systemctl reset-failed ${SYSTEMD_SERVICE} || true"
         ssh -q "root@${host}" "systemctl start ${SYSTEMD_SERVICE}"
         sleep 2
     done
@@ -153,8 +195,23 @@ echo "=== Phase 5: Cluster Lockdown ==="
 ceph mon set auth_allowed_ciphers aes256k
 ceph config set mon auth_allow_insecure_global_id_reclaim false || true
 
+set +ux -e
+
 echo "================================================="
-echo " Migration Complete! Checking cluster health..."
+echo " MANUAL EXECUTION COMMANDS"
+echo " Please copy and run the following block manually:"
 echo "================================================="
-sleep 5
-ceph health detail
+echo ""
+echo "ceph auth rotate --key-type=aes256k mon."
+echo "ceph auth get mon. > /tmp/updated_mon.keyring"
+echo "ceph auth get client.admin >> /tmp/updated_mon.keyring"
+
+for node in "${CEPH_NODES[@]}"; do
+    echo "ssh root@${node} 'mkdir -p /var/lib/ceph/tmp'"
+    echo "scp /tmp/updated_mon.keyring root@${node}:/var/lib/ceph/tmp/ceph.mon.keyring"
+    echo "ssh root@${node} 'chmod 600 /var/lib/ceph/tmp/ceph.mon.keyring'"
+done
+
+echo "rm -f /tmp/updated_mon.keyring"
+echo ""
+echo "================================================="
